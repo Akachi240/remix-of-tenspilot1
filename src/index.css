@@ -69,7 +69,9 @@
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background: var(--background-fallback);
+    background: url('/blue-wave-bg.jpg') no-repeat center center fixed;
+    background-size: cover;
+    background-color: var(--background-fallback);
     min-height: 100vh;
     color: var(--ink);
   }
