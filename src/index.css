@@ -1,0 +1,339 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 216 30% 97%;
+    --background-fallback: #f4f7fb;
+    --foreground: 213 60% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 213 60% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 60% 16%;
+
+    --primary: 209 45% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 213 30% 92%;
+    --secondary-foreground: 213 60% 16%;
+
+    --muted: 213 30% 92%;
+    --muted-foreground: 211 20% 56%;
+
+    --accent: 209 45% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 30% 90%;
+    --input: 210 30% 90%;
+    --ring: 209 45% 53%;
+
+    --radius: 0.75rem;
+
+    --surface: rgba(255,255,255,0.7);
+    --surface-tint: rgba(220,232,245,0.6);
+    --border-glass: rgba(255,255,255,0.6);
+    --ink: #0f2340;
+    --ink-muted: #7a90a8;
+    --ink-subtle: #b0c4d8;
+    --accent-hex: #4a8fc4;
+    --accent-dark: #2e6faa;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 209 45% 53%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 209 45% 53%;
+
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'Jost', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: url('/blue-wave-bg.jpg') no-repeat center center fixed;
+    background-size: cover;
+    background-color: var(--background-fallback);
+    min-height: 100vh;
+    color: var(--ink);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+}
+
+/* App name branding */
+.app-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Glassmorphism card styles */
+.medical-card {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: 1rem;
+  box-shadow: 0 2px 12px rgba(15, 35, 64, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.medical-card:hover {
+  box-shadow: 0 4px 20px rgba(15, 35, 64, 0.10);
+  transform: translateY(-1px);
+}
+.medical-card-elevated {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: 1rem;
+  box-shadow: 0 4px 24px rgba(15, 35, 64, 0.10);
+}
+
+/* Primary button */
+.btn-primary {
+  background: var(--accent-dark);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(46, 111, 170, 0.25);
+  transition: all 0.2s ease;
+}
+.btn-primary:hover {
+  background: var(--accent-hex);
+  box-shadow: 0 4px 16px rgba(46, 111, 170, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Outline button */
+.btn-outline-ice {
+  background: transparent;
+  color: var(--accent-dark);
+  border: 1.5px solid var(--accent-hex);
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+.btn-outline-ice:hover {
+  background: rgba(74, 143, 196, 0.08);
+}
+
+/* Icon backgrounds */
+.icon-surface {
+  background: var(--surface-tint);
+}
+
+/* Header glass effect */
+header {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-glass);
+  box-shadow: 0 1px 8px rgba(15, 35, 64, 0.06);
+}
+
+/* Logo icon gradient */
+.logo-icon {
+  color: var(--accent-dark);
+}
+
+/* Hero background */
+.hero-bg {
+  background: transparent;
+}
+
+/* Hero badge */
+.hero-badge {
+  background: rgba(74, 143, 196, 0.08);
+  border: 1px solid rgba(74, 143, 196, 0.20);
+  color: var(--accent-dark);
+  border-radius: 9999px;
+  padding: 0.25rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+/* Page entrance animations */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeSlideUp 0.35s ease forwards;
+}
+.animate-in:nth-child(1) { animation-delay: 0.00s; }
+.animate-in:nth-child(2) { animation-delay: 0.06s; }
+.animate-in:nth-child(3) { animation-delay: 0.12s; }
+.animate-in:nth-child(4) { animation-delay: 0.18s; }
+.animate-in:nth-child(5) { animation-delay: 0.24s; }
+.animate-in:nth-child(6) { animation-delay: 0.30s; }
+
+/* Form input refinement */
+input, textarea, select {
+  border: 1px solid var(--border-glass);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-hex);
+  box-shadow: 0 0 0 3px rgba(74, 143, 196, 0.15);
+}
+.checkbox-selected {
+  border-color: var(--accent-hex);
+  background: rgba(74, 143, 196, 0.06);
+  box-shadow: 0 0 0 1px rgba(74, 143, 196, 0.20);
+}
+
+/* Pain picker buttons */
+.pain-btn {
+  transition: all 0.15s ease;
+  font-weight: 600;
+}
+.pain-btn:hover:not(.pain-btn-selected) {
+  border-color: var(--accent-hex);
+  background: rgba(74, 143, 196, 0.08);
+  transform: scale(1.08);
+}
+.pain-btn-selected {
+  background: var(--accent-dark) !important;
+  border-color: var(--accent-dark) !important;
+  color: white !important;
+  transform: scale(1.12);
+  box-shadow: 0 2px 8px rgba(46, 111, 170, 0.35);
+}
+
+/* Existing styles */
+.pain-scale-slider .react-aria-Slider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 4px;
+}
+.pain-scale-slider .react-aria-Slider > div {
+  width: 100%;
+  display: flex;
+  position: relative;
+  height: 24px;
+}
+.pain-scale-slider .react-aria-SliderOutput {
+  margin-top: 8px;
+  font-weight: bold;
+}
+.pain-scale-slider .react-aria-SliderTrack {
+  height: 8px;
+  width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(to right, #4ade80, #facc15, #f87171);
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.pain-scale-slider .react-aria-SliderThumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--accent-hex);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+.pain-scale-slider .react-aria-SliderThumb:focus-visible {
+  outline: 2px solid var(--accent-hex);
+  outline-offset: 2px;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(0.6); opacity: 0.7; }
+  50%      { transform: scale(1.0); opacity: 1.0; }
+}
+.breathing-circle {
+  animation: breathe 8s ease-in-out infinite;
+}
+
+@keyframes gateGlow {
+  0%, 100% { box-shadow: none; }
+  50%      { box-shadow: 0 0 0 3px var(--accent-dark), 0 0 12px rgba(46,111,170,0.4); }
+}
+.gate-pulse {
+  animation: gateGlow 2s ease-in-out infinite;
+}
+
+@media print {
+  .no-print { display: none !important; }
+}
+
+/* ━━━ MOBILE CONDENSING ━━━ */
+@media (max-width: 640px) {
+
+  .page-container {
+    padding: 1rem 1rem 5rem;
+  }
+
+  .medical-card {
+    padding: 0.875rem;
+    border-radius: 14px;
+  }
+
+  /* Typography scaling */
+  h1 { font-size: 1.75rem; line-height: 2rem; }
+  h2 { font-size: 1.25rem; line-height: 1.75rem; }
+  h3 { font-size: 1rem; line-height: 1.5rem; }
+
+  .timer-display {
+    font-size: 4.5rem;
+    line-height: 1;
+  }
+
+  .stat-number {
+    font-size: 1.75rem;
+    line-height: 2rem;
+  }
+
+  .reduction-pct {
+    font-size: 2rem;
+  }
+
+  /* Spacing overrides */
+  .gap-6 { gap: 0.75rem; }
+  .gap-4 { gap: 0.625rem; }
+  .space-y-6 > * + * { margin-top: 0.75rem; }
+  .space-y-4 > * + * { margin-top: 0.5rem; }
+  .py-8 { padding-top: 1rem; padding-bottom: 1rem; }
+  .py-6 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .mt-6 { margin-top: 0.75rem; }
+  .mb-6 { margin-bottom: 0.75rem; }
+}
