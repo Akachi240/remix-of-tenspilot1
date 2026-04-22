@@ -1,20 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Link, useNavigate } from 'react-router-dom';
-import { Zap, ArrowRight, User, CheckCircle2, AlertTriangle, CheckCircle, Plus, ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Zap, User, CheckCircle2, CheckCircle, Plus, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+// ─── Schema ───────────────────────────────────────────────
 const formSchema = z.object({
   painLocation: z.string().min(1, 'Please select a pain location'),
   painIntensity: z.number().min(1).max(10),
@@ -33,19 +31,19 @@ interface TensSettings {
   pulseDuration: string;
   sessionDuration: string;
   mode: string;
+  aiRationale: string;
+  zone: 'acupuncture' | 'conventional';
 }
 
 interface Profile {
   id: string;
   name: string;
   condition: string;
-  medications: string[];
-  sessionHistory: any[];
 }
 
 const SAFETY_CHECKS = [
   'I do not have a cardiac pacemaker or implantable defibrillator',
-  'Electrodes will not be placed over the chest, neck/carotid, or head',
+  'Electrodes will not be placed over the chest, neck, or head',
   'Skin at electrode sites is clean, unbroken and dry',
   'I am not in the first trimester of pregnancy',
   'The device power bank is connected and emergency switch is accessible',
@@ -53,17 +51,30 @@ const SAFETY_CHECKS = [
 
 const DURATION_PRESETS = ['5', '10', '15', '20', '25', '30'];
 
+const skinOptions = [
+  { value: 'normal', emoji: '🙂', label: 'Normal' },
+  { value: 'sensitive', emoji: '⚠️', label: 'Sensitive' },
+  { value: 'very-sensitive', emoji: '🔴', label: 'Very Sensitive' },
+];
+
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 const SessionSetupForm = () => {
   const [painValue, setPainValue] = useState(5);
-  const [settings, setSettings] = useState<TensSettings | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // Mobile wizard step
   const [step, setStep] = useState(1);
-
-  // Profile state
   const [profiles, setProfiles] = useState<Profile[]>(() => {
     try { return JSON.parse(localStorage.getItem('tens-companion-profiles') || '[]'); } catch { return []; }
   });
@@ -73,16 +84,9 @@ const SessionSetupForm = () => {
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [newName, setNewName] = useState('');
   const [newCondition, setNewCondition] = useState('');
-
-  // Safety state
   const [safetyChecks, setSafetyChecks] = useState<boolean[]>([false, false, false, false, false]);
   const [safetyPassed, setSafetyPassed] = useState(false);
-
-  // Pain type mode
   const [painTypeMode, setPainTypeMode] = useState<'acute' | 'chronic' | null>(null);
-
-  // Custom duration
-  const [customDuration, setCustomDuration] = useState('');
 
   const confirmedCount = safetyChecks.filter(Boolean).length;
 
@@ -98,39 +102,35 @@ const SessionSetupForm = () => {
     },
   });
 
-  const handlePainSliderChange = (value: number[]) => {
-    setPainValue(value[0]);
-    form.setValue('painIntensity', value[0]);
-  };
+  // Watch values so tile selectors re-render when form state changes
+  const watchedSkinSensitivity = form.watch('skinSensitivity');
+  const watchedSessionDuration = form.watch('sessionDuration');
 
   const generateSettings = (data: FormData): TensSettings => {
     const placementMap: Record<string, string> = {
-      'lower-back': 'Place two electrodes on either side of the spine at the lower back, 2-3 inches apart.',
-      'neck': 'Place electrodes on the back of the neck, on either side of the spine. Avoid the front of the throat.',
-      'knee': 'Place electrodes above and below the kneecap, or on either side of the joint.',
-      'shoulder': 'Place electrodes around the painful area of the shoulder, front and back.',
-      'wrist-hand': 'Place small electrodes on either side of the wrist or along the forearm.',
-      'foot-ankle': 'Place electrodes on the top and bottom of the foot, or around the ankle.',
-      'hip': 'Place electrodes around the hip joint, one on the front and one on the side.',
-      'elbow': 'Place electrodes above and below the elbow on the affected side.',
+      'lower-back': 'Place two electrodes on either side of the spine at the lower back.',
+      'neck': 'Place electrodes on the back of the neck, avoiding the throat.',
+      'knee': 'Place electrodes above and below the kneecap.',
+      'shoulder': 'Place electrodes around the painful area of the shoulder.',
+      'wrist-hand': 'Place small electrodes on either side of the wrist.',
+      'foot-ankle': 'Place electrodes on the top and bottom of the foot.',
+      'hip': 'Place electrodes around the hip joint.',
+      'elbow': 'Place electrodes above and below the elbow.',
     };
 
-    let frequency = '80-100 Hz';
-    let pulse = '150 μs';
-    let mode = 'Continuous';
+    let frequency, pulse, mode, rationale, zone: 'acupuncture' | 'conventional';
 
-    switch (data.painType) {
-      case 'sharp': frequency = '80-120 Hz'; pulse = '60-100 μs'; mode = 'Continuous'; break;
-      case 'dull': frequency = '2-10 Hz'; pulse = '200-250 μs'; mode = 'Burst'; break;
-      case 'burning': frequency = '2-10 Hz'; pulse = '200 μs'; mode = 'Modulated'; break;
-      case 'throbbing': frequency = '35-50 Hz'; pulse = '150-200 μs'; mode = 'Continuous'; break;
-      case 'tingling': frequency = '80-100 Hz'; pulse = '60 μs'; mode = 'Continuous'; break;
+    if (painTypeMode === 'chronic' || data.painType === 'burning' || data.painType === 'tingling') {
+      frequency = '2–10 Hz'; pulse = '200–250 μs'; mode = 'Modulated'; zone = 'acupuncture' as const;
+      rationale = 'AI: Acupuncture-like TENS recommended for neuropathic relief (Endorphin release).';
+    } else {
+      frequency = '80–120 Hz'; pulse = '60–150 μs'; mode = 'Continuous'; zone = 'conventional' as const;
+      rationale = 'AI: Conventional TENS recommended for acute relief (Gate Control Theory).';
     }
 
     let intensity = Math.round(data.painIntensity * 0.8);
     if (data.previousTensExperience === 'experienced') intensity = Math.min(intensity + 1, 10);
-    if (data.skinSensitivity === 'sensitive') intensity = Math.max(intensity - 1, 1);
-    if (data.skinSensitivity === 'very-sensitive') intensity = Math.max(intensity - 2, 1);
+    if (data.skinSensitivity !== 'normal') intensity = Math.max(intensity - 1, 1);
 
     return {
       electrodePosition: placementMap[data.painLocation] || 'Place electrodes around the painful area.',
@@ -139,44 +139,47 @@ const SessionSetupForm = () => {
       pulseDuration: pulse,
       sessionDuration: data.sessionDuration,
       mode,
+      aiRationale: rationale,
+      zone,
     };
-  };
-
-  const getFrequencyZone = (freq: string) => {
-    const match = freq.match(/(\d+)/);
-    if (!match) return null;
-    const val = parseInt(match[1]);
-    if (val <= 10) return 'acupuncture';
-    if (val < 20) return 'between';
-    return 'conventional';
   };
 
   const onSubmit = (data: FormData) => {
     const tensSettings = generateSettings(data);
-    setSettings(tensSettings);
-
+    const activeProfile = profiles.find(p => p.id === activeProfileId);
     const sessionConfig = {
       type: 'tens-session-config',
       timestamp: new Date().toISOString(),
-      data: { ...data, settings: tensSettings, painTypeMode },
+      data: {
+        ...data,
+        settings: tensSettings,
+        painTypeMode,
+        patientProfile: activeProfile || null,
+      },
     };
-
     localStorage.setItem('activeSessionConfig', JSON.stringify(sessionConfig));
+    toast({ title: 'Session Ready!', description: 'Optimizing parameters...' });
+    navigate('/active-session');
+  };
 
+  // Shows a toast listing exactly which fields failed validation
+  const onInvalid = (errors: Record<string, unknown>) => {
+    const missing = Object.values(errors)
+      .map((e) => (e as { message?: string })?.message)
+      .filter(Boolean);
     toast({
-      title: 'Session Configured!',
-      description: 'Your TENS settings are ready. Start your session or adjust parameters.',
+      title: '⚠️ Missing fields',
+      description: missing.join(' · '),
+      variant: 'destructive',
     });
   };
 
   const addProfile = () => {
     if (!newName.trim()) return;
     const profile: Profile = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: newName.trim(),
       condition: newCondition.trim(),
-      medications: [],
-      sessionHistory: [],
     };
     const updated = [...profiles, profile];
     setProfiles(updated);
@@ -188,700 +191,458 @@ const SessionSetupForm = () => {
     setShowAddProfile(false);
   };
 
-  const selectProfile = (id: string) => {
-    setActiveProfileId(id);
-    localStorage.setItem('tens-active-profile-id', id);
-  };
-
-  const handleDurationPreset = (val: string) => {
-    form.setValue('sessionDuration', val);
-    setCustomDuration('');
-  };
-
-  const handleCustomDuration = () => {
-    const v = parseInt(customDuration);
-    if (v >= 1 && v <= 120) {
-      form.setValue('sessionDuration', String(v));
-    }
-  };
-
-  const skinOptions = [
-    { value: 'normal', emoji: '🙂', label: 'Normal', desc: 'Standard intensity', subtext: '' },
-    { value: 'sensitive', emoji: '⚠️', label: 'Sensitive', desc: '-1 intensity', subtext: '(floor: 1)' },
-    { value: 'very-sensitive', emoji: '🔴', label: 'Very Sensitive', desc: '-2 intensity', subtext: '(floor: 1)' },
-  ];
-
-  const watchDuration = form.watch('sessionDuration');
-  const watchSkin = form.watch('skinSensitivity');
-
-  // ─── Mobile Progress Bar ───
-  const MobileProgressBar = () => (
-    <div className="mb-5">
-      <div className="flex gap-2 mb-2">
-        {[1, 2, 3].map(s => (
-          <div
-            key={s}
-            className="flex-1 h-1.5 rounded-full transition-colors"
-            style={{ background: s <= step ? 'var(--accent-hex)' : '#dce8f5' }}
-          />
-        ))}
+  // ─── Shared: Pain type mode selector ──────────────────
+  const renderPainTypeModeSelector = () => (
+    <div className="mb-6">
+      <h3 className="text-sm font-bold mb-3 text-gray-700">What type of pain are you managing?</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div
+          onClick={() => setPainTypeMode('acute')}
+          className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${painTypeMode === 'acute' ? 'border-blue-500 bg-blue-50' : 'border-border'}`}
+        >
+          <p className="font-bold text-sm">🦴 Acute / Musculoskeletal</p>
+          <p className="text-[10px] text-muted-foreground mt-1">Joint, back, or muscle tension</p>
+        </div>
+        <div
+          onClick={() => setPainTypeMode('chronic')}
+          className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${painTypeMode === 'chronic' ? 'border-purple-500 bg-purple-50' : 'border-border'}`}
+        >
+          <p className="font-bold text-sm">⚡ Chronic / Neuropathic</p>
+          <p className="text-[10px] text-muted-foreground mt-1">Burning, tingling, or nerve damage</p>
+        </div>
       </div>
-      <p className="text-xs text-center" style={{ fontFamily: 'var(--font-body)', color: 'var(--ink-muted)' }}>
-        Step {step} of 3
-      </p>
     </div>
   );
 
-  // ─── Shared: Profile Selector ───
-  const ProfileSelector = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">👤 Select Patient Profile</CardTitle>
+  // ─── Shared: Profile selector ──────────────────────────
+  const renderProfileSelector = () => (
+    <Card className="w-full shadow-sm">
+      <CardHeader className="p-4">
+        <CardTitle className="text-lg">👤 Patient Profile</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {profiles.length === 0 && !showAddProfile && (
-          <p className="text-sm text-muted-foreground">No profiles yet — create one below</p>
-        )}
+      <CardContent className="space-y-3 p-4">
         {profiles.map(p => (
           <div
             key={p.id}
-            onClick={() => selectProfile(p.id)}
-            className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-colors ${
-              activeProfileId === p.id
-                ? 'checkbox-selected'
-                : 'border-border hover:border-accent'
-            }`}
+            onClick={() => {
+              setActiveProfileId(p.id);
+              localStorage.setItem('tens-active-profile-id', p.id);
+            }}
+            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${activeProfileId === p.id ? 'border-blue-500 bg-blue-50' : 'border-border'}`}
           >
-            <User className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{p.name}</p>
-              <p className="text-xs text-muted-foreground">{p.condition}</p>
+            <User className="h-5 w-5 text-gray-400" />
+            <div className="flex-1">
+              <p className="text-sm font-bold">{p.name}</p>
+              <p className="text-xs text-gray-500">{p.condition}</p>
             </div>
-            {activeProfileId === p.id && <CheckCircle2 className="h-5 w-5 ml-auto" style={{ color: 'var(--accent-hex)' }} />}
+            {activeProfileId === p.id && <CheckCircle2 className="h-5 w-5 text-blue-600" />}
           </div>
         ))}
-        <hr className="my-3" />
         {!showAddProfile ? (
-          <Button variant="outline" className="w-full text-sm" onClick={() => setShowAddProfile(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Add New Profile
+          <Button variant="outline" className="w-full py-6" onClick={() => setShowAddProfile(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New Patient
           </Button>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3 p-2 bg-gray-50 rounded-xl border border-dashed">
             <input
-              placeholder="Patient name"
+              type="text"
+              placeholder="Name"
               value={newName}
-              onChange={e => setNewName(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
             />
             <input
-              placeholder="Primary condition"
+              type="text"
+              placeholder="Condition"
               value={newCondition}
-              onChange={e => setNewCondition(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              onChange={(e) => setNewCondition(e.target.value)}
+              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
             />
-            <Button onClick={addProfile} className="btn-primary text-sm">
-              Add Profile
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={addProfile} className="flex-1 bg-blue-600">Save</Button>
+              <Button variant="ghost" onClick={() => setShowAddProfile(false)}>Cancel</Button>
+            </div>
           </div>
         )}
       </CardContent>
     </Card>
   );
 
-  // ─── Shared: Pain Type Mode Selector ───
-  const PainTypeModeSelector = () => (
-    <div className="mb-6">
-      <h3 className="text-sm font-medium mb-3">What type of pain are you managing? 🩺</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div
-          onClick={() => setPainTypeMode('acute')}
-          className={`p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all ${
-            painTypeMode === 'acute' ? 'checkbox-selected' : 'border-border hover:border-accent'
-          }`}
-        >
-          <p className="font-medium">🦴 Acute / Musculoskeletal Pain</p>
-          <p className="text-sm text-muted-foreground mt-1">Joint pain, back pain, post-exercise soreness, muscle tension</p>
-        </div>
-        <div
-          onClick={() => setPainTypeMode('chronic')}
-          className={`p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all ${
-            painTypeMode === 'chronic' ? 'border-purple-400 bg-purple-50' : 'border-border hover:border-purple-300'
-          }`}
-        >
-          <p className="font-medium">⚡ Chronic / Neuropathic Pain</p>
-          <p className="text-sm text-muted-foreground mt-1">Burning, tingling, numbness, diabetic neuropathy, nerve damage</p>
-        </div>
-      </div>
-      {painTypeMode === 'acute' && (
-        <div className="border-l-4 rounded-r-xl p-3 mt-2" style={{ borderColor: 'var(--accent-hex)', background: 'rgba(74,143,196,0.06)' }}>
-          <p className="text-xs sm:text-sm">✅ Conventional TENS (20–120 Hz) recommended</p>
-          <p className="text-xs sm:text-sm">Gate Control mechanism — fast onset 10–20 min</p>
-          <p className="text-xs text-muted-foreground italic">(Sluka & Walsh, 2003)</p>
-        </div>
-      )}
-      {painTypeMode === 'chronic' && (
-        <div className="border-l-4 border-purple-400 bg-purple-50 rounded-r-xl p-3 mt-2">
-          <p className="text-xs sm:text-sm">✅ Acupuncture-like TENS (1–10 Hz) recommended</p>
-          <p className="text-xs sm:text-sm">Endorphin release mechanism — sustained relief 90–240 min</p>
-          <p className="text-xs text-muted-foreground italic">(Han, 2004)</p>
-        </div>
-      )}
-    </div>
-  );
-
-  // ─── Step 1: Pain Area + Type ───
-  const Step1Content = () => (
-    <div className="space-y-5">
-      <PainTypeModeSelector />
-
-      <FormField control={form.control} name="painLocation" render={({ field }) => (
-        <FormItem>
-          <FormLabel>Pain Location</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
-            <FormControl><SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger></FormControl>
-            <SelectContent>
-              <SelectItem value="lower-back">Lower Back</SelectItem>
-              <SelectItem value="neck">Neck</SelectItem>
-              <SelectItem value="knee">Knee</SelectItem>
-              <SelectItem value="shoulder">Shoulder</SelectItem>
-              <SelectItem value="wrist-hand">Wrist / Hand</SelectItem>
-              <SelectItem value="foot-ankle">Foot / Ankle</SelectItem>
-              <SelectItem value="hip">Hip</SelectItem>
-              <SelectItem value="elbow">Elbow</SelectItem>
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )} />
-
-      <FormField control={form.control} name="painIntensity" render={() => (
-        <FormItem>
-          <FormLabel>Pain Intensity: {painValue}/10</FormLabel>
-          <FormControl>
-            <Slider min={1} max={10} step={1} value={[painValue]} onValueChange={handlePainSliderChange} className="py-4" />
-          </FormControl>
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Mild</span><span>Moderate</span><span>Severe</span>
-          </div>
-          <FormMessage />
-        </FormItem>
-      )} />
-
-      <FormField control={form.control} name="painType" render={({ field }) => (
-        <FormItem>
-          <FormLabel>Pain Type</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
-            <FormControl><SelectTrigger><SelectValue placeholder="Select pain type" /></SelectTrigger></FormControl>
-            <SelectContent>
-              <SelectItem value="sharp">Sharp / Stabbing</SelectItem>
-              <SelectItem value="dull">Dull / Aching</SelectItem>
-              <SelectItem value="burning">Burning</SelectItem>
-              <SelectItem value="throbbing">Throbbing</SelectItem>
-              <SelectItem value="tingling">Tingling / Numbness</SelectItem>
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )} />
-    </div>
-  );
-
-  // ─── Step 2: Parameters ───
-  const Step2Content = () => (
-    <div className="space-y-5">
-      <FormField control={form.control} name="previousTensExperience" render={({ field }) => (
-        <FormItem>
-          <FormLabel>TENS Experience</FormLabel>
-          <FormControl>
-            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="none" id="exp-none" />
-                <Label htmlFor="exp-none">First time user</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="some" id="exp-some" />
-                <Label htmlFor="exp-some">Some experience</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="experienced" id="exp-exp" />
-                <Label htmlFor="exp-exp">Experienced user</Label>
-              </div>
-            </RadioGroup>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )} />
-
-      <FormField control={form.control} name="skinSensitivity" render={({ field }) => (
-        <FormItem>
-          <FormLabel>🧴 Skin Sensitivity</FormLabel>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            {skinOptions.map(opt => (
-              <div
-                key={opt.value}
-                onClick={() => field.onChange(opt.value)}
-                className={`border rounded-xl p-2 sm:p-3 text-center cursor-pointer transition-all text-sm ${
-                  field.value === opt.value
-                    ? 'checkbox-selected font-semibold'
-                    : 'border-border hover:border-accent'
-                }`}
-              >
-                <div className="text-lg">{opt.emoji}</div>
-                <p className="text-xs sm:text-sm font-medium">{opt.label}</p>
-                <p className="text-xs text-muted-foreground hidden sm:block">{opt.desc}</p>
-                {opt.subtext && <p className="text-xs text-muted-foreground hidden sm:block">{opt.subtext}</p>}
-              </div>
-            ))}
-          </div>
-          <FormMessage />
-        </FormItem>
-      )} />
-
-      <FormField control={form.control} name="sessionDuration" render={({ field }) => (
-        <FormItem>
-          <FormLabel>⏱️ Session Duration</FormLabel>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            {DURATION_PRESETS.map(d => (
-              <div
-                key={d}
-                onClick={() => handleDurationPreset(d)}
-                className={`border rounded-xl py-2 sm:py-3 text-center text-sm font-medium cursor-pointer transition-all ${
-                  field.value === d
-                    ? 'checkbox-selected font-semibold'
-                    : 'border-border hover:border-accent'
-                }`}
-              >
-                {d} min
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-sm text-muted-foreground">Custom:</span>
-            <input
-              type="number"
-              min={1}
-              max={120}
-              value={customDuration}
-              onChange={e => setCustomDuration(e.target.value)}
-              className="border rounded-lg px-3 py-1 w-20 text-sm"
-            />
-            <Button type="button" onClick={handleCustomDuration} className="btn-primary rounded-lg px-3 py-1 text-sm h-auto">Set</Button>
-          </div>
-          <FormMessage />
-        </FormItem>
-      )} />
-    </div>
-  );
-
-  // ─── Step 3: Safety ───
-  const Step3Content = () => (
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium" style={{ color: 'var(--ink)' }}>🛡️ Pre-Session Safety Check</h3>
-      <p className="text-xs text-muted-foreground">Confirm ALL conditions before proceeding</p>
-      {SAFETY_CHECKS.map((check, i) => (
-        <div
-          key={i}
-          onClick={() => {
-            const next = [...safetyChecks];
-            next[i] = !next[i];
-            setSafetyChecks(next);
-          }}
-          className={`flex items-start gap-3 p-2.5 rounded-xl border cursor-pointer transition-colors ${
-            safetyChecks[i]
-              ? 'border-green-400 bg-green-50'
-              : 'border-border bg-white hover:border-amber-300'
-          }`}
-        >
-          <div className={`mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-            safetyChecks[i] ? 'border-green-500 bg-green-500' : 'border-gray-300'
-          }`}>
-            {safetyChecks[i] && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            )}
-          </div>
-          <span className="text-sm">{check}</span>
-        </div>
-      ))}
-      <p className="text-xs text-muted-foreground mt-2">{confirmedCount} of 5 confirmed</p>
-      {confirmedCount < 5 && (
-        <div className="flex items-center gap-2 text-amber-700 text-sm">
-          <AlertTriangle className="h-4 w-4" />
-          All checks must be confirmed to proceed
-        </div>
-      )}
-      {confirmedCount === 5 && (
-        <div className="flex items-center gap-2 text-green-700 text-sm">
-          <CheckCircle className="h-4 w-4" />
-          ✅ Safety confirmed — you may proceed
-        </div>
-      )}
-    </div>
-  );
-
-  // ─── Settings Result ───
-  const SettingsResult = () => settings ? (
-    <>
-      <Alert className="mt-6" style={{ borderColor: 'rgba(74,143,196,0.3)', background: 'rgba(74,143,196,0.06)' }}>
-        <Zap className="h-4 w-4" style={{ color: 'var(--accent-hex)' }} />
-        <AlertTitle style={{ color: 'var(--ink)' }}>Your TENS Settings</AlertTitle>
-        <AlertDescription>
-          <div className="mt-2 space-y-2 text-sm">
-            <p className="text-xs sm:text-sm"><strong>Electrode Placement:</strong> {settings.electrodePosition}</p>
-            <div className="grid grid-cols-2 gap-2">
-              <p><strong>Intensity:</strong> {settings.intensitySetting}/10</p>
-              <div>
-                <p><strong>Frequency:</strong> {settings.frequencySetting}</p>
-                <div className="w-full h-2 rounded-full flex overflow-hidden mt-1">
-                  <div className="bg-blue-400" style={{ width: '7.6%' }} title="Acupuncture-like (1–10 Hz)" />
-                  <div className="bg-gray-300" style={{ width: '7.6%' }} title="Between zones (11–19 Hz)" />
-                  <div className="bg-green-400" style={{ width: '84.8%' }} title="Conventional (20–120 Hz)" />
-                </div>
-                {(() => {
-                  const zone = getFrequencyZone(settings.frequencySetting);
-                  if (zone === 'acupuncture') return <span className="text-blue-600 text-xs">⚡ Acupuncture-like range (1–10 Hz)</span>;
-                  if (zone === 'between') return <span className="text-gray-500 text-xs">— Between zones</span>;
-                  return <span className="text-green-600 text-xs">✅ Conventional range (20–120 Hz)</span>;
-                })()}
-              </div>
-              <p><strong>Pulse Duration:</strong> {settings.pulseDuration}</p>
-              <p><strong>Mode:</strong> {settings.mode}</p>
-              <p><strong>Session:</strong> {settings.sessionDuration} minutes</p>
-            </div>
-          </div>
-        </AlertDescription>
-      </Alert>
-      <div className="flex gap-3 mt-4">
-        <Button asChild className="flex-1 btn-primary">
-          <Link to="/active-session" className="flex items-center gap-2">
-            Start Session <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="flex-1 btn-outline-ice">
-          <Link to="/dashboard">View Dashboard</Link>
-        </Button>
-      </div>
-    </>
-  ) : null;
-
-  // ═══════════════════════════════════════
-  // MOBILE LAYOUT (max-width:640px via hook)
-  // ═══════════════════════════════════════
+  // ─── Mobile View ───────────────────────────────────────
   if (isMobile) {
     return (
-      <div className="w-full max-w-2xl mx-auto">
-        <ProfileSelector />
-
+      <div className="w-full px-4 py-4 space-y-4 max-w-md mx-auto">
+        {renderProfileSelector()}
         {activeProfileId && (
           <div className="mt-4">
-            <MobileProgressBar />
+            <div className="flex gap-1 mb-4">
+              {[1, 2, 3].map(s => (
+                <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s <= step ? 'bg-blue-600' : 'bg-gray-200'}`} />
+              ))}
+            </div>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <Card className="medical-card">
-                  <CardContent className="p-4">
-                    {step === 1 && <Step1Content />}
-                    {step === 2 && <Step2Content />}
-                    {step === 3 && <Step3Content />}
-                  </CardContent>
-                </Card>
+              <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
 
-                {/* Bottom navigation */}
-                <div className="mt-4 space-y-2">
-                  {step === 1 && (
+                {/* ── Step 1: Pain type + location ── */}
+                {step === 1 && (
+                  <div className="space-y-5">
+                    {renderPainTypeModeSelector()}
+                    <FormField control={form.control} name="painLocation" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">Location</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="py-6"><SelectValue placeholder="Select location" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {['lower-back', 'neck', 'knee', 'shoulder', 'wrist-hand', 'foot-ankle', 'hip', 'elbow'].map(loc => (
+                              <SelectItem key={loc} value={loc}>{loc.replace('-', ' ').toUpperCase()}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                )}
+
+                {/* ── Step 2: Pain detail + sensitivity + duration ── */}
+                {step === 2 && (
+                  <div className="space-y-6">
+                    <FormField control={form.control} name="painType" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">Pain Character</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="py-6"><SelectValue placeholder="Select pain type" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="sharp">Sharp</SelectItem>
+                            <SelectItem value="dull">Dull</SelectItem>
+                            <SelectItem value="burning">Burning</SelectItem>
+                            <SelectItem value="tingling">Tingling</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="previousTensExperience" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">TENS Experience</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="py-6"><SelectValue placeholder="Select experience" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="first-time">First Time</SelectItem>
+                            <SelectItem value="experienced">Experienced</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="skinSensitivity" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">🧴 Skin Sensitivity</FormLabel>
+                        <div className="grid grid-cols-3 gap-2">
+                          {skinOptions.map(opt => (
+                            <div
+                              key={opt.value}
+                              onClick={() => {
+                                field.onChange(opt.value);
+                                form.setValue('skinSensitivity', opt.value, { shouldValidate: true });
+                              }}
+                              className={`border-2 rounded-xl py-3 text-center cursor-pointer transition-all ${watchedSkinSensitivity === opt.value ? 'border-blue-500 bg-blue-50' : 'border-border'}`}
+                            >
+                              <div className="text-lg">{opt.emoji}</div>
+                              <p className="text-[10px] font-bold mt-1">{opt.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="sessionDuration" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">⏱️ Time (min)</FormLabel>
+                        <div className="grid grid-cols-3 gap-2">
+                          {DURATION_PRESETS.map(d => (
+                            <div
+                              key={d}
+                              onClick={() => form.setValue('sessionDuration', d, { shouldValidate: true })}
+                              className={`border-2 rounded-lg py-3 text-center text-sm font-bold cursor-pointer transition-all ${watchedSessionDuration === d ? 'border-blue-500 bg-blue-50' : 'border-border'}`}
+                            >
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                )}
+
+                {/* ── Step 3: Safety checks ── */}
+                {step === 3 && (
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-sm">🛡️ Safety Check</h3>
+                    {SAFETY_CHECKS.map((check, i) => (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          const n = [...safetyChecks];
+                          n[i] = !n[i];
+                          setSafetyChecks(n);
+                        }}
+                        className={`flex items-start gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-all ${safetyChecks[i] ? 'border-green-500 bg-green-50' : 'bg-white border-border'}`}
+                      >
+                        <div className={`mt-0.5 h-4 w-4 rounded flex items-center justify-center border flex-shrink-0 ${safetyChecks[i] ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                          {safetyChecks[i] && <CheckCircle className="h-3 w-3 text-white" />}
+                        </div>
+                        <span>{check}</span>
+                      </div>
+                    ))}
+                    {confirmedCount < 5 && (
+                      <p className="text-xs text-amber-600 font-medium pt-1 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {5 - confirmedCount} item{5 - confirmedCount > 1 ? 's' : ''} remaining
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2 pt-4">
+                  {step < 3 ? (
                     <Button
                       type="button"
-                      onClick={() => setStep(2)}
-                      className="w-full py-3 rounded-xl text-white font-semibold"
-                      style={{ background: 'var(--accent-dark)' }}
+                      onClick={() => setStep(step + 1)}
+                      className="w-full py-7 bg-blue-700 rounded-2xl text-base font-bold"
                     >
-                      Next
+                      Next Step →
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={confirmedCount < 5}
+                      className="w-full py-7 bg-blue-700 rounded-2xl text-base font-bold disabled:opacity-50"
+                    >
+                      Generate & Start
                     </Button>
                   )}
-                  {step === 2 && (
-                    <>
-                      <Button
-                        type="button"
-                        onClick={() => setStep(3)}
-                        className="w-full py-3 rounded-xl text-white font-semibold"
-                        style={{ background: 'var(--accent-dark)' }}
-                      >
-                        Next
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => setStep(1)}
-                        className="w-full text-center text-sm py-2"
-                        style={{ color: 'var(--ink-muted)' }}
-                      >
-                        ← Back
-                      </button>
-                    </>
-                  )}
-                  {step === 3 && (
-                    <>
-                      <Button
-                        type="submit"
-                        disabled={confirmedCount < 5}
-                        className="w-full py-3 rounded-xl text-white font-semibold disabled:opacity-40"
-                        style={{ background: confirmedCount === 5 ? 'var(--accent-dark)' : undefined }}
-                      >
-                        Start Session
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => setStep(2)}
-                        className="w-full text-center text-sm py-2"
-                        style={{ color: 'var(--ink-muted)' }}
-                      >
-                        ← Back
-                      </button>
-                    </>
+                  {step > 1 && (
+                    <Button variant="ghost" type="button" onClick={() => setStep(step - 1)}>
+                      ← Back
+                    </Button>
                   )}
                 </div>
               </form>
             </Form>
-
-            <SettingsResult />
           </div>
         )}
       </div>
     );
   }
 
-  // ═══════════════════════════════════════
-  // DESKTOP LAYOUT (unchanged)
-  // ═══════════════════════════════════════
+  // ─── Desktop View ──────────────────────────────────────
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6">
-      <ProfileSelector />
+    <div className="w-full max-w-4xl mx-auto space-y-6 pb-20 px-6">
+      {renderProfileSelector()}
 
-      {/* Safety Checklist */}
+      {/* Safety gate */}
       {activeProfileId && !safetyPassed && (
-        <Card className="border border-amber-200 bg-amber-50 rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-lg">🛡️ Pre-Session Safety Check</CardTitle>
-            <CardDescription>Confirm ALL conditions before proceeding</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <Card className="border-amber-200 bg-amber-50 rounded-3xl p-6">
+          <CardTitle className="text-xl mb-4">🛡️ Safety Verification</CardTitle>
+          <div className="space-y-2">
             {SAFETY_CHECKS.map((check, i) => (
               <div
                 key={i}
                 onClick={() => {
-                  const next = [...safetyChecks];
-                  next[i] = !next[i];
-                  setSafetyChecks(next);
+                  const n = [...safetyChecks];
+                  n[i] = !n[i];
+                  setSafetyChecks(n);
                 }}
-                className={`flex items-start gap-3 p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-colors ${
-                  safetyChecks[i]
-                    ? 'border-green-400 bg-green-50'
-                    : 'border-border bg-white hover:border-amber-300'
-                }`}
+                className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${safetyChecks[i] ? 'border-green-500 bg-white' : 'bg-gray-50 border-transparent'}`}
               >
-                <div className={`mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                  safetyChecks[i] ? 'border-green-500 bg-green-500' : 'border-gray-300'
-                }`}>
-                  {safetyChecks[i] && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  )}
+                <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${safetyChecks[i] ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                  {safetyChecks[i] && <CheckCircle className="h-4 w-4 text-white" />}
                 </div>
-                <span className="text-sm">{check}</span>
+                <span className="text-sm font-medium">{check}</span>
               </div>
             ))}
-            <p className="text-xs text-muted-foreground mt-3">{confirmedCount} of 5 confirmed</p>
-            {confirmedCount < 5 ? (
-              <div className="flex items-center gap-2 text-amber-700 text-sm mt-2">
-                <AlertTriangle className="h-4 w-4" />
-                All checks must be confirmed to proceed
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-green-700 text-sm mt-2">
-                <CheckCircle className="h-4 w-4" />
-                ✅ Safety confirmed — you may proceed
-              </div>
-            )}
-            <Button
-              onClick={() => confirmedCount === 5 && setSafetyPassed(true)}
-              disabled={confirmedCount < 5}
-              className={confirmedCount < 5
-                ? 'w-full bg-gray-200 text-gray-400 cursor-not-allowed mt-3'
-                : 'w-full bg-green-600 hover:bg-green-700 text-white cursor-pointer mt-3'
-              }
-            >
-              Continue to Session Setup →
-            </Button>
-          </CardContent>
+          </div>
+          {confirmedCount < 5 && (
+            <p className="text-sm text-amber-700 font-medium mt-4 flex items-center gap-1">
+              <AlertCircle className="h-4 w-4" />
+              {5 - confirmedCount} item{5 - confirmedCount > 1 ? 's' : ''} remaining before you can proceed.
+            </p>
+          )}
+          <Button
+            onClick={() => confirmedCount === 5 && setSafetyPassed(true)}
+            disabled={confirmedCount < 5}
+            className="w-full mt-6 py-8 text-lg rounded-2xl bg-blue-600 disabled:opacity-50"
+          >
+            Proceed to Configuration →
+          </Button>
         </Card>
       )}
 
-      {/* Main Form */}
+      {/* Configuration form */}
       {activeProfileId && safetyPassed && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5" style={{ color: 'var(--accent-hex)' }} />
-              TENS Session Setup Wizard
+        <Card className="rounded-3xl shadow-xl overflow-hidden border-none">
+          <div className="bg-blue-600 p-6 text-white">
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <Zap className="h-6 w-6" /> TENS Configuration
             </CardTitle>
-            <CardDescription>
-              Configure your pain profile and device parameters step by step.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PainTypeModeSelector />
-
+          </div>
+          <CardContent className="p-8">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField control={form.control} name="painLocation" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pain Location</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="lower-back">Lower Back</SelectItem>
-                        <SelectItem value="neck">Neck</SelectItem>
-                        <SelectItem value="knee">Knee</SelectItem>
-                        <SelectItem value="shoulder">Shoulder</SelectItem>
-                        <SelectItem value="wrist-hand">Wrist / Hand</SelectItem>
-                        <SelectItem value="foot-ankle">Foot / Ankle</SelectItem>
-                        <SelectItem value="hip">Hip</SelectItem>
-                        <SelectItem value="elbow">Elbow</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+              <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+                {renderPainTypeModeSelector()}
 
-                <FormField control={form.control} name="painIntensity" render={() => (
-                  <FormItem>
-                    <FormLabel>Pain Intensity: {painValue}/10</FormLabel>
-                    <FormControl>
-                      <Slider min={1} max={10} step={1} value={[painValue]} onValueChange={handlePainSliderChange} className="py-4" />
-                    </FormControl>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Mild</span><span>Moderate</span><span>Severe</span>
+                <div className="grid grid-cols-2 gap-8 pt-6 border-t">
+                  {/* Left column */}
+                  <div className="space-y-6">
+                    <FormField control={form.control} name="painLocation" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">Target Area</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="py-6"><SelectValue placeholder="Select location" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {['lower-back', 'neck', 'knee', 'shoulder', 'wrist-hand', 'foot-ankle', 'hip', 'elbow'].map(loc => (
+                              <SelectItem key={loc} value={loc}>{loc.replace('-', ' ').toUpperCase()}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="painIntensity" render={() => (
+                      <FormItem>
+                        <FormLabel className="font-bold">Intensity Scale: {painValue}/10</FormLabel>
+                        <FormControl>
+                          <Slider
+                            min={1} max={10} step={1}
+                            value={[painValue]}
+                            onValueChange={(v) => {
+                              setPainValue(v[0]);
+                              form.setValue('painIntensity', v[0], { shouldValidate: true });
+                            }}
+                            className="py-6"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="painType" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">Pain Character</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="py-6"><SelectValue placeholder="Select pain type" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="sharp">Sharp</SelectItem>
+                            <SelectItem value="dull">Dull</SelectItem>
+                            <SelectItem value="burning">Burning</SelectItem>
+                            <SelectItem value="tingling">Tingling</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  {/* Right column */}
+                  <div className="space-y-6">
+                    <FormField control={form.control} name="previousTensExperience" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">TENS Experience</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="py-6"><SelectValue placeholder="Select experience" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="first-time">First Time</SelectItem>
+                            <SelectItem value="experienced">Experienced</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="skinSensitivity" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">🧴 Skin Sensitivity</FormLabel>
+                        <div className="grid grid-cols-3 gap-3">
+                          {skinOptions.map(opt => (
+                            <div
+                              key={opt.value}
+                              onClick={() => {
+                                field.onChange(opt.value);
+                                form.setValue('skinSensitivity', opt.value, { shouldValidate: true });
+                              }}
+                              className={`border-2 rounded-2xl p-4 text-center cursor-pointer transition-all ${watchedSkinSensitivity === opt.value ? 'border-blue-500 bg-blue-50' : 'border-border'}`}
+                            >
+                              <div className="text-xl">{opt.emoji}</div>
+                              <p className="text-[10px] font-bold mt-1">{opt.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="sessionDuration" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">⏱️ Duration (min)</FormLabel>
+                        <div className="grid grid-cols-3 gap-2">
+                          {DURATION_PRESETS.map(d => (
+                            <div
+                              key={d}
+                              onClick={() => form.setValue('sessionDuration', d, { shouldValidate: true })}
+                              className={`border-2 rounded-xl py-3 text-center font-bold cursor-pointer transition-all ${watchedSessionDuration === d ? 'border-blue-500 bg-blue-50' : 'border-border'}`}
+                            >
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                </div>
+
+                {/* ── Inline error summary ── shows exactly what's missing after a failed submit */}
+                {Object.keys(form.formState.errors).length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3 items-start">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-red-700 mb-1">Please complete these fields:</p>
+                      <ul className="text-xs text-red-600 space-y-0.5 list-disc list-inside">
+                        {Object.entries(form.formState.errors).map(([key, err]) => (
+                          <li key={key}>{(err as { message?: string })?.message || key}</li>
+                        ))}
+                      </ul>
                     </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                  </div>
+                )}
 
-                <FormField control={form.control} name="painType" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pain Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select pain type" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="sharp">Sharp / Stabbing</SelectItem>
-                        <SelectItem value="dull">Dull / Aching</SelectItem>
-                        <SelectItem value="burning">Burning</SelectItem>
-                        <SelectItem value="throbbing">Throbbing</SelectItem>
-                        <SelectItem value="tingling">Tingling / Numbness</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="previousTensExperience" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>TENS Experience</FormLabel>
-                    <FormControl>
-                      <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="none" id="exp-none" />
-                          <Label htmlFor="exp-none">First time user</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="some" id="exp-some" />
-                          <Label htmlFor="exp-some">Some experience</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="experienced" id="exp-exp" />
-                          <Label htmlFor="exp-exp">Experienced user</Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="skinSensitivity" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>🧴 Skin Sensitivity</FormLabel>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                      {skinOptions.map(opt => (
-                        <div
-                          key={opt.value}
-                          onClick={() => field.onChange(opt.value)}
-                          className={`border rounded-xl p-2 sm:p-3 text-center cursor-pointer transition-all text-sm ${
-                            field.value === opt.value
-                              ? 'checkbox-selected font-semibold'
-                              : 'border-border hover:border-accent'
-                          }`}
-                        >
-                          <div className="text-lg">{opt.emoji}</div>
-                          <p className="text-xs sm:text-sm font-medium">{opt.label}</p>
-                          <p className="text-xs text-muted-foreground hidden sm:block">{opt.desc}</p>
-                          {opt.subtext && <p className="text-xs text-muted-foreground hidden sm:block">{opt.subtext}</p>}
-                        </div>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="sessionDuration" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>⏱️ Session Duration</FormLabel>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                      {DURATION_PRESETS.map(d => (
-                        <div
-                          key={d}
-                          onClick={() => handleDurationPreset(d)}
-                          className={`border rounded-xl py-2 sm:py-3 text-center text-sm font-medium cursor-pointer transition-all ${
-                            field.value === d
-                              ? 'checkbox-selected font-semibold'
-                              : 'border-border hover:border-accent'
-                          }`}
-                        >
-                          {d} min
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-sm text-muted-foreground">Custom:</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={120}
-                        value={customDuration}
-                        onChange={e => setCustomDuration(e.target.value)}
-                        className="border rounded-lg px-3 py-1 w-20 text-sm"
-                      />
-                      <Button type="button" onClick={handleCustomDuration} className="btn-primary rounded-lg px-3 py-1 text-sm h-auto">Set</Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <Button type="submit" className="w-full btn-primary">
-                  Generate TENS Settings
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 py-8 text-xl font-bold rounded-2xl shadow-lg"
+                >
+                  Generate AI Settings & Start →
                 </Button>
               </form>
             </Form>
-
-            <SettingsResult />
           </CardContent>
-          {settings && (
-            <CardFooter className="flex gap-3">
-              <Button asChild className="flex-1 btn-primary">
-                <Link to="/active-session" className="flex items-center gap-2">
-                  Start Session <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="flex-1 btn-outline-ice">
-                <Link to="/dashboard">View Dashboard</Link>
-              </Button>
-            </CardFooter>
-          )}
         </Card>
       )}
     </div>
