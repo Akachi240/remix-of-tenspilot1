@@ -35,7 +35,7 @@ const UserDashboard = () => {
   };
 
   const calculateAveragePainReduction = () => {
-    if (activeProfile.sessionHistory.length === 0) return 0;
+    if (!activeProfile?.sessionHistory || activeProfile.sessionHistory.length === 0) return 0;
     const totalReduction = activeProfile.sessionHistory.reduce((sum, log) => sum + (log.painBefore - log.painAfter), 0);
     return totalReduction / activeProfile.sessionHistory.length;
   };
@@ -89,14 +89,15 @@ const UserDashboard = () => {
       yPosition += 8;
 
       doc.setFontSize(11);
-      doc.text(`Total Sessions: ${activeProfile.sessionHistory.length}`, margin, yPosition);
+      const sessions = activeProfile.sessionHistory?.length || 0;
+      doc.text(`Total Sessions: ${sessions}`, margin, yPosition);
       yPosition += 6;
 
       const avgReduction = calculateAveragePainReduction();
       doc.text(`Average Pain Reduction: ${avgReduction.toFixed(1)} points`, margin, yPosition);
       yPosition += 6;
 
-      const totalDuration = activeProfile.sessionHistory.reduce((sum, s) => sum + s.parameters.duration, 0);
+      const totalDuration = activeProfile.sessionHistory?.reduce((sum, s) => sum + (s.parameters?.duration || 0), 0) || 0;
       doc.text(`Total Duration: ${totalDuration} minutes`, margin, yPosition);
       yPosition += 12;
 
@@ -106,7 +107,7 @@ const UserDashboard = () => {
       doc.text("SESSION JOURNAL", margin, yPosition);
       yPosition += 8;
 
-      if (activeProfile.sessionHistory.length > 0) {
+      if (activeProfile.sessionHistory && activeProfile.sessionHistory.length > 0) {
         doc.setFontSize(9);
         activeProfile.sessionHistory.forEach((session, index) => {
           if (yPosition > pageHeight - 30) {
@@ -119,11 +120,15 @@ const UserDashboard = () => {
           yPosition += 4;
           yPosition += 2;
         });
+      } else {
+        doc.setFontSize(9);
+        doc.text("No sessions recorded.", margin, yPosition);
+        yPosition += 4;
       }
       yPosition += 8;
 
       // MEDICATIONS
-      if (activeProfile.medications.length > 0) {
+      if (activeProfile.medications && activeProfile.medications.length > 0) {
         if (yPosition > pageHeight - 40) {
           doc.addPage();
           yPosition = margin;
@@ -145,8 +150,10 @@ const UserDashboard = () => {
       }
 
       doc.save(`TensPilot_Report_${activeProfile.name.replace(/\s/g, '_')}.pdf`);
+      alert('PDF exported successfully!');
     } catch (error) {
-      console.error(error);
+      console.error('PDF generation error:', error);
+      alert('Error generating PDF: ' + error);
     }
   };
 
@@ -187,7 +194,7 @@ const UserDashboard = () => {
             <CardContent className="p-5 space-y-4">
               <div className="flex justify-between items-center border-b pb-3">
                 <span className="text-slate-500 text-sm">Sessions</span>
-                <span className="font-bold text-lg">{activeProfile.sessionHistory.length}</span>
+                <span className="font-bold text-lg">{activeProfile.sessionHistory?.length || 0}</span>
               </div>
               <div className="flex justify-between items-center border-b pb-3">
                 <span className="text-slate-500 text-sm">Avg Reduction</span>
@@ -195,7 +202,7 @@ const UserDashboard = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500 text-sm">Medications</span>
-                <span className="font-bold text-lg">{activeProfile.medications.length}</span>
+                <span className="font-bold text-lg">{activeProfile.medications?.length || 0}</span>
               </div>
             </CardContent>
           </Card>
@@ -208,7 +215,7 @@ const UserDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {activeProfile.medications.length > 0 ? (
+              {activeProfile.medications && activeProfile.medications.length > 0 ? (
                 activeProfile.medications.slice(0, 3).map((med, i) => (
                   <div key={i} className="p-2 bg-slate-50 rounded-lg border text-xs">
                     <p className="font-bold">{med}</p>
