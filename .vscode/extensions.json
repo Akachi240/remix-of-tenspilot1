@@ -1,6 +1,8 @@
 {
     "recommendations": [
         "google.geminicodeassist",
-        "rooveterinaryinc.roo-cline"
+        "rooveterinaryinc.roo-cline",
+        "openai.chatgpt",
+        "codly.codly"
     ]
 }

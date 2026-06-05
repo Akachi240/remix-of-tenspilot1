@@ -1,5 +1,4 @@
-import React, { useState, useRef } from 'react';
-import { jsPDF } from "jspdf";
+import React, { useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Activity, Download, Image as ImageIcon, Video, X, FileText, Send, User, Pill, Zap, HeartPulse } from 'lucide-react';
@@ -14,6 +13,34 @@ const UserDashboard = () => {
   const [clinicalMedia, setClinicalMedia] = useState<{ url: string; type: string }[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const avgReduction = useMemo(() => {
+    if (!activeProfile?.sessionHistory || activeProfile.sessionHistory.length === 0) return 0;
+    const totalReduction = activeProfile.sessionHistory.reduce(
+      (sum, log) => sum + (log.painBefore - log.painAfter), 0
+    );
+    return totalReduction / activeProfile.sessionHistory.length;
+  }, [activeProfile?.sessionHistory]);
+
+  const sessionHistory = useMemo(() => {
+    return [...(activeProfile?.sessionHistory || [])].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [activeProfile?.sessionHistory]);
+
+  const bestReduction = useMemo(() => sessionHistory.reduce(
+    (best, session) => Math.max(best, session.painBefore - session.painAfter), 0
+  ), [sessionHistory]);
+
+  const totalDuration = useMemo(() => sessionHistory.reduce((sum, session) => sum + (session.parameters?.duration || 0), 0), [sessionHistory]);
+
+  const trendSessions = useMemo(() => [...sessionHistory].reverse().slice(-8), [sessionHistory]);
+
+  const trendPoints = useMemo(() => trendSessions.map((session, index) => {
+    const x = trendSessions.length <= 1 ? 150 : 16 + index * (268 / (trendSessions.length - 1));
+    const y = 124 - (Math.max(0, Math.min(10, session.painAfter)) / 10) * 96;
+    return `${x},${y}`;
+  }).join(' '), [trendSessions]);
 
   if (!activeProfile) {
     return (
@@ -44,36 +71,14 @@ const UserDashboard = () => {
     setClinicalMedia(prev => prev.filter((_, i) => i !== index));
   };
 
-  const calculateAveragePainReduction = () => {
-    if (!activeProfile?.sessionHistory || activeProfile.sessionHistory.length === 0) return 0;
-    const totalReduction = activeProfile.sessionHistory.reduce(
-      (sum, log) => sum + (log.painBefore - log.painAfter), 0
-    );
-    return totalReduction / activeProfile.sessionHistory.length;
-  };
-
-  const avgReduction = calculateAveragePainReduction();
   // Convert avg pain reduction (0–10 scale) to a ring percentage (0–100)
   const painRingValue = Math.min(100, (avgReduction / 10) * 100);
-  const sessionHistory = [...(activeProfile.sessionHistory || [])].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  const bestReduction = sessionHistory.reduce(
-    (best, session) => Math.max(best, session.painBefore - session.painAfter),
-    0
-  );
-  const totalDuration = sessionHistory.reduce((sum, session) => sum + (session.parameters?.duration || 0), 0);
-  const trendSessions = [...sessionHistory].reverse().slice(-8);
-  const trendPoints = trendSessions.map((session, index) => {
-    const x = trendSessions.length <= 1 ? 150 : 16 + index * (268 / (trendSessions.length - 1));
-    const y = 124 - (Math.max(0, Math.min(10, session.painAfter)) / 10) * 96;
-    return `${x},${y}`;
-  }).join(' ');
   const formatSessionDate = (date: string) =>
     new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   const generateReport = async () => {
     try {
+      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       let yPosition = 20;
       const pageHeight = doc.internal.pageSize.getHeight();

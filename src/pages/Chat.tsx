@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
+import { getAIResponse } from '@/lib/ai-service';
 
 interface Message {
   id: string;
@@ -55,7 +56,6 @@ const Chat = () => {
 
     if (mode === 'ai') {
       setIsTyping(true);
-      // Map to Gemini history format
       const history = messages
         .filter(m => m.sender === 'ai' || m.sender === 'patient')
         .map(m => ({
@@ -63,27 +63,9 @@ const Chat = () => {
           parts: [{ text: m.text }]
         }));
 
-      // Call the new structured AI agent backend
       try {
-        const response = await fetch('/api/ai-agent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: userText,
-            userId: user?.uid,
-            linkedDoctorId,
-            history: history,
-          }),
-        });
+        const result = await getAIResponse(userText, history);
 
-        if (!response.ok) {
-          throw new Error('AI agent API call failed');
-        }
-
-        const result = await response.json();
-        
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           text: result.response,
@@ -93,11 +75,38 @@ const Chat = () => {
           actions: result.actions,
           escalated: result.escalateToDoctor
         }]);
+
+        // Handle escalation client-side (replaces server-side Firebase Admin actions)
+        if (result.escalateToDoctor && linkedDoctorId) {
+          addDoc(collection(db, 'alerts'), {
+            patientId: user?.uid,
+            doctorId: linkedDoctorId,
+            message: userText,
+            aiResponse: result.response,
+            riskLevel: result.riskLevel,
+            createdAt: serverTimestamp(),
+            status: 'unread'
+          }).catch(err => console.error('Failed to create alert:', err));
+        }
+
+        if (result.actions.includes('create_consultation') && linkedDoctorId) {
+          const roomId = `TensPilot_Consult_${linkedDoctorId}_${user?.uid}`;
+          setDoc(doc(db, 'consultations', roomId), {
+            id: roomId,
+            roomId,
+            patientId: user?.uid,
+            doctorId: linkedDoctorId,
+            status: 'ringing',
+            initiatedBy: 'patient_ai_escalation',
+            timestamp: serverTimestamp(),
+            reason: userText
+          }, { merge: true }).catch(err => console.error('Failed to create consultation:', err));
+        }
       } catch (error) {
         console.error("Failed to get AI response:", error);
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
-          text: 'Sorry, I encountered an error communicating with the backend. Please try again.',
+          text: 'Sorry, I encountered an error. Please check your connection and try again.',
           sender: 'ai',
           timestamp: new Date()
         }]);
