@@ -76,6 +76,7 @@ export async function saveSessionToFirestore(
     // Save to Firestore
     const docRef = await addDoc(collection(db, 'sessions'), session);
 
+    // eslint-disable-next-line no-console
     console.log(
       `✅ Session saved to Firestore (ID: ${docRef.id})`,
       {

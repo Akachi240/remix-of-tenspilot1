@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   User,
@@ -13,10 +14,10 @@ interface AuthContextType {
   user: User | null;
   linkedDoctorId: string | null;
   loading: boolean;
-  login: (email: string, pass:string) => Promise<any>;
-  register: (email: string, pass: string) => Promise<any>;
+  login: (_email: string, _pass:string) => Promise<unknown>;
+  register: (_email: string, _pass: string) => Promise<unknown>;
   logout: () => Promise<void>;
-  sendPasswordReset: (email: string) => Promise<void>;
+  sendPasswordReset: (_email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

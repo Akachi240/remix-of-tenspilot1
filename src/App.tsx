@@ -15,19 +15,19 @@ import Index from "./pages/Index";
 import SessionSetup from "./pages/SessionSetup";
 import ActiveSession from "./pages/ActiveSession";
 import Dashboard from "./pages/Dashboard";
-import Report from "./pages/Report";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import { Login } from "./pages/Login";
 import { PainTracker } from "@/components/patient/PainTracker";
 import PasswordResetPage from "./pages/PasswordReset";
 import TestPainTracker from './pages/TestPainTracker';
-import Chat from "./pages/Chat";
-import VideoConsult from "./pages/VideoConsult";
+import NotFound from "./pages/NotFound";
+import { Login } from "./pages/Login";
 
-// Lazy-load Education page — its EducationGuide component is ~495KB
 const Education = React.lazy(() => import("./pages/Education"));
-
+const Chat = React.lazy(() => import("./pages/Chat"));
+const Settings = React.lazy(() => import("./pages/Settings"));
+const Report = React.lazy(() => import("./pages/Report"));
+const VideoConsult = React.lazy(() => import("./pages/VideoConsult"));
+const Download = React.lazy(() => import("./pages/Download"));
+const Competition = React.lazy(() => import("./pages/Competition"));
 const queryClient = new QueryClient();
 
 const LazyFallback = () => (
@@ -51,6 +51,22 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<LazyFallback />}>
         <Education />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/download",
+    element: (
+      <Suspense fallback={<LazyFallback />}>
+        <Download />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/competition",
+    element: (
+      <Suspense fallback={<LazyFallback />}>
+        <Competition />
       </Suspense>
     ),
   },
@@ -92,7 +108,9 @@ const router = createBrowserRouter([
     path: "/report",
     element: (
       <ProtectedRoute>
-        <Report />
+        <Suspense fallback={<LazyFallback />}>
+          <Report />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -100,7 +118,9 @@ const router = createBrowserRouter([
     path: "/settings",
     element: (
       <ProtectedRoute>
-        <Settings />
+        <Suspense fallback={<LazyFallback />}>
+          <Settings />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -108,15 +128,19 @@ const router = createBrowserRouter([
     path: "/chat",
     element: (
       <ProtectedRoute>
-        <Chat />
+        <Suspense fallback={<LazyFallback />}>
+          <Chat />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
   {
-    path: "/video-consult",
+    path: "/consult",
     element: (
       <ProtectedRoute>
-        <VideoConsult />
+        <Suspense fallback={<LazyFallback />}>
+          <VideoConsult />
+        </Suspense>
       </ProtectedRoute>
     ),
   },

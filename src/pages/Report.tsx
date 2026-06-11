@@ -22,7 +22,8 @@ const Report = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const getArrayFromLocalStorage = (key: string): Record<string, unknown>[] => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getArrayFromLocalStorage = (key: string): any[] => {
     try {
       const item = localStorage.getItem(key);
       if (!item) return [];

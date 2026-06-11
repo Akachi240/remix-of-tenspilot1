@@ -11,7 +11,7 @@ interface ModeCardProps {
   tagline: string;
   targetConditions: string[];
   selected: boolean;
-  onSelect: (mode: TensModeType) => void;
+  onSelect: (_mode: TensModeType) => void;
 }
 
 const ModeCard: React.FC<ModeCardProps> = ({
@@ -71,7 +71,7 @@ const ModeCard: React.FC<ModeCardProps> = ({
 
 interface ModeSelectionProps {
   selectedMode: TensModeType | null;
-  onModeSelect: (mode: TensModeType) => void;
+  onModeSelect: (_mode: TensModeType) => void;
   onContinue: () => void;
 }
 

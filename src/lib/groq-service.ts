@@ -111,6 +111,7 @@ export async function getAIResponse(
 
   groqMessages.push({ role: 'user', content: message });
 
+  // eslint-disable-next-line no-console
   console.log('📤 Sending to Groq API:', {
     model: 'llama-3.3-70b-versatile',
     historyLength: history.length,

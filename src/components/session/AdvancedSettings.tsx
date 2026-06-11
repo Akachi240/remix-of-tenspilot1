@@ -7,11 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
 import {
   Download,
-  Upload,
-  Copy,
+
   AlertTriangle,
   Settings,
   Save,
@@ -19,7 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { TensModeType, getModeConfig, TensModeConfig } from '@/lib/modes';
+import { TensModeType, getModeConfig } from '@/lib/modes';
 
 interface CustomPreset {
   id: string;
@@ -56,8 +55,7 @@ export const AdvancedSettings: React.FC = () => {
     }
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingPreset, setEditingPreset] = useState<CustomPreset | null>(null);
+
   const [presetName, setPresetName] = useState('');
   const [presetNotes, setPresetNotes] = useState('');
 

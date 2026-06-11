@@ -31,7 +31,12 @@ interface AgentResponse {
   confidence: number;
 }
 
-async function getAIResponse(history: any[], message: string): Promise<AgentResponse> {
+interface HistoryMessage {
+  role: string;
+  parts: { text: string }[];
+}
+
+async function getAIResponse(history: HistoryMessage[], message: string): Promise<AgentResponse> {
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   // Format history for Gemini

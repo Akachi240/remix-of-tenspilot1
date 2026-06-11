@@ -141,9 +141,9 @@ const Chat = () => {
     } else if (linkedDoctorId) {
       // Send to Doctor (Real Firestore)
       try {
-        await addDoc(collection(db, `doctorPatientLinks/${linkedDoctorId}_${user.uid}/messages`), {
+        await addDoc(collection(db, `doctorPatientLinks/${linkedDoctorId}_${user?.uid}/messages`), {
           text: userText,
-          senderId: user.uid,
+          senderId: user?.uid,
           senderRole: 'patient',
           timestamp: serverTimestamp()
         });
@@ -173,9 +173,9 @@ const Chat = () => {
     }]);
 
     if (linkedDoctorId) {
-      const chatRef = doc(db, 'chats', `${linkedDoctorId}_${user.uid}`);
+      const chatRef = doc(db, 'chats', `${linkedDoctorId}_${user?.uid}`);
       await setDoc(chatRef, {
-        patientId: user.uid,
+        patientId: user?.uid,
         doctorId: linkedDoctorId,
         lastMessage: "Patient escalated from AI",
         lastMessageTime: serverTimestamp(),
@@ -186,7 +186,7 @@ const Chat = () => {
 
   const joinConsultation = () => {
     if (linkedDoctorId) {
-      const roomId = `TensPilot_Consult_${linkedDoctorId}_${user.uid}`;
+      const roomId = `TensPilot_Consult_${linkedDoctorId}_${user?.uid}`;
       navigate('/video-consult', { state: { roomId } });
     }
   };

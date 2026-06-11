@@ -1,4 +1,4 @@
-import { collection, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { writeBatch, doc } from 'firebase/firestore';
 import { db } from './firebase';
 import { SessionRecord } from '../context/ProfileContext';
 
@@ -10,12 +10,14 @@ export interface GlobalSession {
   modeName?: string;
   painType?: string;
   placement?: string;
-  parameters?: { frequency: string; pulseDuration: string; intensity: number; duration: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parameters?: any;
   painBefore?: number;
   painAfter?: number;
   reductionPct?: number;
   notes?: string;
-  updatedAt?: { toDate?: () => Date } | string | Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  updatedAt?: any;
   [key: string]: unknown;
 }
 
@@ -29,6 +31,20 @@ export function generateUUID(): string {
     return crypto.randomUUID();
   }
   return 'local_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getGlobalTime(updatedAt: any): number {
+  if (!updatedAt) return 0;
+  if (typeof updatedAt.toDate === 'function') return updatedAt.toDate().getTime();
+  return new Date(updatedAt).getTime();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getGlobalIsoString(updatedAt: any): string {
+  if (!updatedAt) return '';
+  if (typeof updatedAt.toDate === 'function') return updatedAt.toDate().toISOString();
+  return new Date(updatedAt).toISOString();
 }
 
 export function hasSessionSyncConflict(
@@ -63,12 +79,7 @@ export function resolveSessionConflict(
   global: GlobalSession
 ): SessionRecord {
   const nestedTime = nested.updatedAt ? new Date(nested.updatedAt).getTime() : 0;
-  // Handle Firestore Timestamp or string date
-  const globalTime = global.updatedAt 
-    ? (typeof global.updatedAt.toDate === 'function' 
-        ? global.updatedAt.toDate().getTime() 
-        : new Date(global.updatedAt).getTime())
-    : 0;
+  const globalTime = getGlobalTime(global.updatedAt);
 
   if (globalTime > nestedTime) {
     // Global wins (modified by doctor)
@@ -77,18 +88,14 @@ export function resolveSessionConflict(
       date: global.date || nested.date,
       modeId: global.modeId || nested.modeId,
       modeName: global.modeName || nested.modeName,
-      painType: global.painType || nested.painType,
+      painType: (global.painType as 'Acute' | 'Chronic') || nested.painType,
       placement: global.placement || nested.placement,
       parameters: global.parameters || nested.parameters,
       painBefore: global.painBefore !== undefined ? global.painBefore : nested.painBefore,
       painAfter: global.painAfter !== undefined ? global.painAfter : nested.painAfter,
       reductionPct: global.reductionPct !== undefined ? global.reductionPct : nested.reductionPct,
       notes: global.notes !== undefined ? global.notes : nested.notes,
-      updatedAt: global.updatedAt 
-        ? (typeof global.updatedAt.toDate === 'function' 
-            ? global.updatedAt.toDate().toISOString() 
-            : new Date(global.updatedAt).toISOString())
-        : nested.updatedAt,
+      updatedAt: global.updatedAt ? getGlobalIsoString(global.updatedAt) : nested.updatedAt,
     };
   }
 
@@ -97,7 +104,7 @@ export function resolveSessionConflict(
 }
 
 export async function syncSessionsWithGlobal(
-  userId: string,
+  _userId: string,
   nestedSessions: SessionRecord[],
   globalSessions: GlobalSession[]
 ): Promise<SyncResult> {
@@ -127,11 +134,7 @@ export async function syncSessionsWithGlobal(
 
       // If local is newer, we need to upload the updated local version to global
       const nestedTime = nested.updatedAt ? new Date(nested.updatedAt).getTime() : 0;
-      const globalTime = globalMatch.updatedAt 
-        ? (typeof globalMatch.updatedAt.toDate === 'function' 
-            ? globalMatch.updatedAt.toDate().getTime() 
-            : new Date(globalMatch.updatedAt).getTime())
-        : 0;
+      const globalTime = getGlobalTime(globalMatch.updatedAt);
       if (nestedTime > globalTime) {
         toUpload.push(resolved);
       }
@@ -151,18 +154,14 @@ export async function syncSessionsWithGlobal(
         date: global.date,
         modeId: global.modeId,
         modeName: global.modeName,
-        painType: global.painType || 'Acute',
+        painType: (global.painType as 'Acute' | 'Chronic') || 'Acute',
         placement: global.placement || '',
         parameters: global.parameters || { frequency: '', pulseDuration: '', intensity: 0, duration: 0 },
         painBefore: global.painBefore || 0,
         painAfter: global.painAfter || 0,
         reductionPct: global.reductionPct || 0,
         notes: global.notes || '',
-        updatedAt: global.updatedAt 
-          ? (typeof global.updatedAt.toDate === 'function' 
-              ? global.updatedAt.toDate().toISOString() 
-              : new Date(global.updatedAt).toISOString())
-          : global.date,
+        updatedAt: global.updatedAt ? getGlobalIsoString(global.updatedAt) : global.date,
       });
     }
   }
@@ -203,3 +202,22 @@ export async function backfillSessionsToGlobal(
     await batch.commit();
   }
 }
+
+export function buildGlobalSessionDoc(patientId: string, session: SessionRecord): GlobalSession {
+  return {
+    id: session.id || generateUUID(),
+    patientId,
+    date: session.date,
+    modeId: session.modeId || 'general',
+    modeName: session.modeName || 'TENS Therapy',
+    painType: session.painType || 'Acute',
+    placement: session.placement || '',
+    parameters: session.parameters || { frequency: '', pulseDuration: '', intensity: 0, duration: 0 },
+    painBefore: session.painBefore,
+    painAfter: session.painAfter,
+    reductionPct: session.reductionPct,
+    notes: session.notes,
+    updatedAt: session.updatedAt || new Date().toISOString()
+  };
+}
+

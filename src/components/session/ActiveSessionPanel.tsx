@@ -5,12 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 import { ReliefSuccessAnimation } from '@/components/animations/Animations';
 import { useProfiles } from '@/context/ProfileContext';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+
 import { saveSessionToFirestore } from '@/lib/services/sessionService';
 
 const ActiveSessionPanel = () => {
   const { user } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [config, setConfig] = useState<any>(null);
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'completed' | 'stopped'>('idle');
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -24,7 +24,7 @@ const ActiveSessionPanel = () => {
   const pulseRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { activeProfile, addSession } = useProfiles();
+  const { activeProfile } = useProfiles();
 
   const breathPhases = ['Inhale', 'Hold', 'Exhale', 'Hold'];
 
@@ -54,6 +54,7 @@ const ActiveSessionPanel = () => {
       }, 1000);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   useEffect(() => {
@@ -201,6 +202,7 @@ const ActiveSessionPanel = () => {
           notes: sessionNotes,
         });
 
+        // eslint-disable-next-line no-console
         console.log(`✅ Session ${savedSessionId} uploaded successfully`);
 
         toast({

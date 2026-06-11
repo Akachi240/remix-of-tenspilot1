@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { Zap, User, CheckCircle2, CheckCircle, Plus, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { TensModeType, getModeConfig, adjustParametersForUser, getAllModes } from '@/lib/modes';
+import { TensModeType, getModeConfig, adjustParametersForUser } from '@/lib/modes';
 import { ModeSelector } from './ModeSelector';
 import { ElectrodePlacementGuide } from './ElectrodePlacementGuide';
 import { StepTransition } from '@/components/animations/Animations';

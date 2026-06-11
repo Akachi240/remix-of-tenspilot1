@@ -1,0 +1,29 @@
+{
+  "title": "TensPilot+ — Connected Pain Management",
+  "slides": [
+    {
+      "title": "The Problem",
+      "content": "Millions of people use physical TENS devices for chronic pain, but lack a digital companion for therapy optimization and outcomes tracking."
+    },
+    {
+      "title": "The Solution",
+      "content": "A dual-app ecosystem connecting patients + clinicians with real-time monitoring, personalized insights, and robust safety checks."
+    },
+    {
+      "title": "Market Opportunity",
+      "content": "Bridging the gap between $2B TENS device market and digital health tracking for chronic pain management."
+    },
+    {
+      "title": "Key Features",
+      "content": "✅ Real-time patient-clinician sync\n✅ Contraindication safety checks\n✅ Privacy-focused role-based access\n✅ Progress analytics\n✅ Clinical-grade UI/UX"
+    },
+    {
+      "title": "Technology",
+      "content": "React 19 + Firebase + TypeScript for modern, reliable, and secure data handling."
+    },
+    {
+      "title": "Traction",
+      "content": "Working prototype demonstrating live session telemetry and comprehensive clinician dashboards."
+    }
+  ]
+}

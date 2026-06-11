@@ -11,8 +11,9 @@ import { db } from '@/lib/firebase';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, linkedDoctorId } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [incomingCall, setIncomingCall] = useState<any>(null);
-  const [doctorSessionActive, setDoctorSessionActive] = useState(false);
+
 
   useEffect(() => {
     if (!user) return;
@@ -33,20 +34,8 @@ const Dashboard = () => {
       }
     });
 
-    const unsub = onSnapshot(
-      doc(db, 'doctorPatientLinks', `${linkedDoctorId}_${user.uid}`),
-      (docSnap) => {
-        if (docSnap.exists() && docSnap.data().activeSession) {
-          setDoctorSessionActive(true)
-        } else {
-          setDoctorSessionActive(false)
-        }
-      }
-    )
-
     return () => {
       unsubscribe();
-      unsub();
     };
   }, [user, linkedDoctorId]);
 
@@ -66,11 +55,11 @@ const Dashboard = () => {
             {linkedDoctorId && (
               <button
                 onClick={async () => {
-                  const roomId = `TensPilot_Consult_${linkedDoctorId}_${user.uid}`;
+                  const roomId = `TensPilot_Consult_${linkedDoctorId}_${user?.uid}`;
                   const consultationRef = doc(db, 'consultations', roomId);
                   await setDoc(consultationRef, {
                     doctorId: linkedDoctorId,
-                    patientId: user.uid,
+                    patientId: user?.uid,
                     status: 'ringing',
                     initiatedBy: 'patient',
                     timestamp: new Date()

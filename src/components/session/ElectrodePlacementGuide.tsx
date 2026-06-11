@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, MapPin, Zap } from 'lucide-react';
-import { TensModeType, getModeConfig, ElectrodePlacement } from '@/lib/modes';
+import { TensModeType, getModeConfig } from '@/lib/modes';
 import { Badge } from '@/components/ui/badge';
 
 interface ElectrodePlacementGuideProps {

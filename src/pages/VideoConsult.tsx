@@ -5,17 +5,14 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 
-declare global {
-  interface Window {
-    JitsiMeetExternalAPI: any;
-  }
-}
+
 
 const VideoConsult = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const jitsiApiRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +35,8 @@ const VideoConsult = () => {
     script.onload = () => {
       if (!jitsiContainerRef.current) return;
       try {
-        const api = new window.JitsiMeetExternalAPI('8x8.vc', {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const api = new (window as any).JitsiMeetExternalAPI('8x8.vc', {
           roomName: roomName,
           parentNode: jitsiContainerRef.current,
           width: '100%',
@@ -80,7 +78,8 @@ const VideoConsult = () => {
       fallbackScript.onload = () => {
         if (!jitsiContainerRef.current) return;
         try {
-          const api = new window.JitsiMeetExternalAPI('meet.jit.si', {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const api = new (window as any).JitsiMeetExternalAPI('meet.jit.si', {
             roomName: roomName,
             parentNode: jitsiContainerRef.current,
             width: '100%',

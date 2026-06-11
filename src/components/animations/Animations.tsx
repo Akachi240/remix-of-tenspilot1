@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
-import { Sparkles, CheckCircle, Zap, Heart } from 'lucide-react';
+import { Sparkles, CheckCircle } from 'lucide-react';
 
 /**
  * Animations & Polish Module
@@ -296,7 +296,7 @@ export const AnimatedModeCard: React.FC<AnimatedModeCardProps> = ({
 // ─── Intensity Slider with Visual Feedback ─────────────
 interface AnimatedIntensitySliderProps {
   value: number;
-  onChange: (value: number) => void;
+  onChange: (_value: number) => void;
   min?: number;
   max?: number;
 }

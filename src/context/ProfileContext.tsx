@@ -1,8 +1,9 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { generateUUID, syncSessionsWithGlobal, backfillSessionsToGlobal, GlobalSession } from '@/lib/session-sync';
+import { generateUUID, syncSessionsWithGlobal, backfillSessionsToGlobal, GlobalSession, buildGlobalSessionDoc } from '@/lib/session-sync';
 
 export interface SessionRecord {
   id?: string;
@@ -33,16 +34,29 @@ export interface Profile {
   updatedAt?: string;
 }
 
+const syncPatientRootDoc = async (userId: string, email: string, profile: Profile) => {
+  await setDoc(doc(db, 'users', userId), {
+    name: profile.name,
+    condition: profile.primaryCondition,
+    medications: profile.medications || [],
+    age: profile.age || null,
+    dateOfBirth: profile.dateOfBirth || null,
+    supervisingPhysician: profile.supervisingPhysician || null,
+    email: email,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+};
+
 interface ProfileContextType {
   profiles: Profile[];
   activeProfileId: string | null;
   activeProfile: Profile | null;
-  addProfile: (name: string, condition: string, age?: number, dob?: string, physician?: string) => Promise<void>;
-  deleteProfile: (id: string) => Promise<void>;
-  setActiveProfileId: (id: string) => void;
-  addMedication: (med: string) => Promise<void>;
-  removeMedication: (med: string) => Promise<void>;
-  addSession: (session: SessionRecord) => Promise<void>;
+  addProfile: (_name: string, _condition: string, _age?: number, _dob?: string, _physician?: string) => Promise<void>;
+  deleteProfile: (_id: string) => Promise<void>;
+  setActiveProfileId: (_id: string) => void;
+  addMedication: (_med: string) => Promise<void>;
+  removeMedication: (_med: string) => Promise<void>;
+  addSession: (_session: SessionRecord) => Promise<void>;
   syncToFirebase: () => Promise<void>;
 }
 
@@ -86,8 +100,8 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
             setProfiles(parsed);
-            if (parsed.length > 0 && !activeProfileId) {
-              setActiveProfileIdState(parsed[0].id);
+            if (parsed.length > 0) {
+              setActiveProfileIdState(prev => prev || parsed[0].id);
             }
           }
         } catch (e) {
@@ -109,6 +123,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
         if (localStored) {
           const localProfiles: Profile[] = JSON.parse(localStored);
           if (Array.isArray(localProfiles) && localProfiles.length > 0) {
+            // eslint-disable-next-line no-console
             console.log(`Auto-migrating ${localProfiles.length} profiles to Firestore for user: ${userId}`);
 
             for (const profile of localProfiles) {
@@ -135,6 +150,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
           }
         }
         localStorage.setItem(migrationFlag, 'true');
+        // eslint-disable-next-line no-console
         console.log('Auto-migration completed successfully!');
       } catch (err) {
         console.error('Auto-migration failed:', err);
@@ -199,7 +215,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     const unsubSessions = onSnapshot(qSessions, (snapshot) => {
       const globalSessions: GlobalSession[] = [];
       snapshot.forEach((doc) => {
-        globalSessions.push({ id: doc.id, ...doc.data() });
+        globalSessions.push({ id: doc.id, ...doc.data() } as GlobalSession);
       });
       currentGlobalSessions = globalSessions;
       handleSync(currentRawProfiles, currentGlobalSessions);
@@ -255,16 +271,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
       await setDoc(doc(db, 'users', user.uid, 'profiles', id), profileDataToSave);
       
       // Sync full patient info to root user document for Doctor Dashboard
-      await setDoc(doc(db, 'users', user.uid), {
-        name: name,
-        condition: condition,
-        medications: newProfile.medications,
-        age: age || null,
-        dateOfBirth: dob || null,
-        supervisingPhysician: physician || null,
-        email: user.email || '',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await syncPatientRootDoc(user.uid, user.email || '', newProfile as Profile);
     }
   };
 
@@ -287,7 +294,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
 
   const setActiveProfileId = (id: string) => setActiveProfileIdState(id);
 
-  const updateActive = async (fn: (p: Profile) => Profile) => {
+  const updateActive = async (fn: (_p: Profile) => Profile) => {
     if (!activeProfileId) return;
 
     let updatedProfile: Profile | null = null;
@@ -307,23 +314,14 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     if (user?.uid && updatedProfile) {
       const profileDataToSave = Object.fromEntries(
         Object.entries({
-          ...updatedProfile,
+          ...(updatedProfile as Profile),
           updatedAt: new Date().toISOString()
         }).filter(([_, v]) => v !== undefined)
       );
       await setDoc(doc(db, 'users', user.uid, 'profiles', activeProfileId), profileDataToSave);
       
       // Sync full patient info to root user document for Doctor Dashboard
-      await setDoc(doc(db, 'users', user.uid), {
-        name: updatedProfile.name,
-        condition: updatedProfile.primaryCondition,
-        medications: updatedProfile.medications || [],
-        age: updatedProfile.age || null,
-        dateOfBirth: updatedProfile.dateOfBirth || null,
-        supervisingPhysician: updatedProfile.supervisingPhysician || null,
-        email: user.email || '',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await syncPatientRootDoc(user.uid, user.email || '', updatedProfile);
     }
   };
 
@@ -348,24 +346,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     }));
 
     if (user?.uid) {
-      await setDoc(doc(db, 'sessions', sessionWithId.id), {
-        patientId: user.uid,
-        date: sessionWithId.date,
-        modeId: sessionWithId.modeId || 'general',
-        modeName: sessionWithId.modeName || 'TENS Therapy',
-        painType: sessionWithId.painType || 'Acute',
-        placement: sessionWithId.placement || '',
-        parameters: sessionWithId.parameters || { frequency: '', pulseDuration: '', intensity: 0, duration: 0 },
-        painBefore: sessionWithId.painBefore || 0,
-        painAfter: sessionWithId.painAfter || 0,
-        reductionPct: sessionWithId.reductionPct || 0,
-        notes: sessionWithId.notes || '',
-        updatedAt: new Date(sessionWithId.updatedAt),
-        timestamp: new Date(sessionWithId.updatedAt),
-        duration: sessionWithId.parameters?.duration || 0,
-        intensity: sessionWithId.parameters?.intensity || 0,
-        location: sessionWithId.placement || '',
-      }, { merge: true });
+      await setDoc(doc(db, 'sessions', sessionWithId.id), buildGlobalSessionDoc(user.uid, sessionWithId), { merge: true });
     }
   };
 
@@ -387,22 +368,14 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
         await setDoc(profileDocRef, profileDataToSave, { merge: true });
 
         if (profile.id === activeProfileId) {
-          await setDoc(doc(db, 'users', userId), {
-            name: profile.name,
-            condition: profile.primaryCondition,
-            medications: profile.medications || [],
-            age: profile.age || null,
-            dateOfBirth: profile.dateOfBirth || null,
-            supervisingPhysician: profile.supervisingPhysician || null,
-            email: user.email || '',
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
+          await syncPatientRootDoc(userId, user.email || '', profile);
         }
 
         if (profile.sessionHistory.length > 0) {
           await backfillSessionsToGlobal(userId, profile.sessionHistory);
         }
       }
+      // eslint-disable-next-line no-console
       console.log('Manual sync completed successfully.');
     } catch (err) {
       console.error('Manual sync failed:', err);

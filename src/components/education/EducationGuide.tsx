@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import {
   Zap, Target, BookOpen, Shield, ChevronRight, ArrowLeft,
-  Activity, Heart, Info, Camera, Send, AlertTriangle, FileText,
+  Activity, Heart, Info, Camera, Send, AlertTriangle,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -59,7 +59,7 @@ const HumanBodySVG = ({
   onRegionClick,
 }: {
   selectedRegion: string | null;
-  onRegionClick: (id: string) => void;
+  onRegionClick: (_id: string) => void;
 }) => (
   <svg
     viewBox="0 0 200 480"
@@ -263,7 +263,7 @@ const GateControlContent = () => (
 
 interface PlacementContentProps {
   selectedRegion: string | null;
-  onRegionClick: (id: string) => void;
+  onRegionClick: (_id: string) => void;
   cardRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
 }
 
