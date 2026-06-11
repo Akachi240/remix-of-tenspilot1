@@ -5,12 +5,14 @@ import UserDashboard from '@/components/dashboard/UserDashboard';
 import { Sparkles, Video, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, linkedDoctorId } = useAuth();
+  const { t } = useTranslation();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [incomingCall, setIncomingCall] = useState<any>(null);
 
@@ -47,9 +49,9 @@ const Dashboard = () => {
         <div className="container px-4 md:px-6">
           <div className="mb-8 text-center flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-medical-900 text-left">Your TENS Therapy Dashboard</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-medical-900 text-left">{t('dashboard')}</h1>
               <p className="mt-2 text-muted-foreground max-w-2xl text-left">
-                Track your sessions, view pain relief trends, and monitor your progress over time.
+                {t('recentSessions')}
               </p>
             </div>
             {linkedDoctorId && (

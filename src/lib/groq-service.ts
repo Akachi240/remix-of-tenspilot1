@@ -80,7 +80,8 @@ function buildContextBlock(context: PatientContext): string {
 export async function getAIResponse(
   message: string,
   history: { role: 'user' | 'model'; parts: { text: string }[] }[],
-  context?: PatientContext
+  context?: PatientContext,
+  language: string = 'en'
 ): Promise<AIAgentResponse> {
   if (!GROQ_API_KEY) {
     throw new Error('Groq API key not configured. Add VITE_GROQ_API_KEY to your .env file.');
@@ -96,6 +97,17 @@ export async function getAIResponse(
   if (context) {
     systemPrompt += buildContextBlock(context);
   }
+  
+  // RAG Language Localization Instruction
+  const languageMap: Record<string, string> = {
+    'en': 'English',
+    'pidgin': 'Nigerian Pidgin English (Broken English)',
+    'yo': 'Yoruba',
+    'ig': 'Igbo',
+    'ha': 'Hausa'
+  };
+  const targetLanguage = languageMap[language] || 'English';
+  systemPrompt += `\n\n=== CRITICAL LANGUAGE REQUIREMENT ===\nYou MUST write the "response" string in ${targetLanguage}. Do NOT respond in English unless requested. Translate medical terms into the target language naturally.`;
 
   // Convert history to Groq/OpenAI format
   const groqMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [

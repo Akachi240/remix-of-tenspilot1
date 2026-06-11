@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { getAIResponse, PatientContext } from '@/lib/groq-service';
 import { useProfiles } from '@/context/ProfileContext';
+import { useTranslation } from 'react-i18next';
 
 interface Message {
   id: string;
@@ -23,6 +24,7 @@ const Chat = () => {
   const { user, linkedDoctorId } = useAuth();
   const { activeProfile } = useProfiles();
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
   const [mode, setMode] = useState<'ai' | 'doctor'>('ai');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -89,7 +91,7 @@ const Chat = () => {
         }));
 
       try {
-        const result = await getAIResponse(userText, history, patientContext);
+        const result = await getAIResponse(userText, history, patientContext, i18n.language);
 
         setMessages(prev => [...prev, {
           id: Date.now().toString(),

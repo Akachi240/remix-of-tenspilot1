@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Zap, Home, MoreVertical, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 const NAV_LINKS = [
   { to: '/home',          label: 'Home' },
@@ -45,6 +46,9 @@ const AppHeader = () => {
               {link.label}
             </Link>
           ))}
+          <div className="ml-4 border-l pl-4 border-[rgba(0,0,0,0.1)]">
+            <LanguageSwitcher />
+          </div>
         </nav>
 
         <div className="flex items-center gap-1 md:hidden">
@@ -66,6 +70,9 @@ const AppHeader = () => {
                     {link.label}
                   </Link>
                 ))}
+                <div className="px-4 py-3 border-t border-[rgba(0,0,0,0.05)]">
+                  <LanguageSwitcher />
+                </div>
               </div>
             )}
           </div>
