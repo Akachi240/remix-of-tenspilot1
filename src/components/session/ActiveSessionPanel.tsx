@@ -5,11 +5,13 @@ import { useToast } from '@/hooks/use-toast';
 import { ReliefSuccessAnimation } from '@/components/animations/Animations';
 import { useProfiles } from '@/context/ProfileContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useSpeech } from '@/hooks/useSpeech';
 
 import { saveSessionToFirestore } from '@/lib/services/sessionService';
 
 const ActiveSessionPanel = () => {
   const { user } = useAuth();
+  const { speak, stopSpeaking } = useSpeech();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [config, setConfig] = useState<any>(null);
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'completed' | 'stopped'>('idle');
@@ -37,8 +39,18 @@ const ActiveSessionPanel = () => {
       const totalSec = durationMin * 60;
       setTotalTime(totalSec);
       setTimeRemaining(totalSec);
+      
+      // Auto-start VoiceCare guide if selected
+      if (parsed.data.settings?.voiceGuided) {
+        const placement = parsed.data.settings.electrodePosition || "around the painful area";
+        setTimeout(() => {
+          speak(`Welcome to Tens Pilot Voice Care. Please place the electrodes ${placement}. Press Start Therapy Session when you are ready.`, 'en');
+        }, 500);
+      }
     }
-  }, []);
+    
+    return () => stopSpeaking();
+  }, [speak, stopSpeaking]);
 
   useEffect(() => {
     if (status === 'running' && timeRemaining > 0) {
@@ -105,13 +117,26 @@ const ActiveSessionPanel = () => {
     return            { color: '#dc2626', label: 'Pain Increased' };
   };
 
-  const handleStart  = () => setStatus('running');
-  const handlePause  = () => { setStatus('paused'); if (intervalRef.current) clearInterval(intervalRef.current); };
-  const handleResume = () => setStatus('running');
+  const handleStart  = () => {
+    setStatus('running');
+    if (config?.data?.settings?.voiceGuided) {
+      speak(`Session started. Intensity is set to ${config?.data?.settings?.intensitySetting || 0}. You can pause or stop the session at any time.`, 'en');
+    }
+  };
+  const handlePause  = () => { 
+    setStatus('paused'); 
+    if (intervalRef.current) clearInterval(intervalRef.current); 
+    if (config?.data?.settings?.voiceGuided) speak("Session paused.", 'en');
+  };
+  const handleResume = () => {
+    setStatus('running');
+    if (config?.data?.settings?.voiceGuided) speak("Session resumed.", 'en');
+  };
 
   const handleEmergencyStop = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setStatus('stopped');
+    if (config?.data?.settings?.voiceGuided) speak("Emergency stop activated. Please remove electrodes immediately.", 'en');
     toast({ title: 'Session Stopped', description: 'TENS session stopped immediately.', variant: 'destructive' });
   };
 

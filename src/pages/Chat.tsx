@@ -9,6 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import { getAIResponse, PatientContext } from '@/lib/groq-service';
 import { useProfiles } from '@/context/ProfileContext';
 import { useTranslation } from 'react-i18next';
+import { useSpeech } from '@/hooks/useSpeech';
+import { analyzePatientInput } from '@/lib/safety-filter';
+import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -28,6 +31,10 @@ const Chat = () => {
   const [mode, setMode] = useState<'ai' | 'doctor'>('ai');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  
+  // VoiceCare Features
+  const { isListening, isSpeaking, startListening, speak } = useSpeech();
+  const [voiceCareMode, setVoiceCareMode] = useState(false);
 
   // Build RAG patient context from active profile
   const patientContext = useMemo<PatientContext | undefined>(() => {
@@ -90,6 +97,30 @@ const Chat = () => {
           parts: [{ text: m.text }]
         }));
 
+      // 1. Local Safety & Pain Logging Interceptor
+      const safetyCheck = analyzePatientInput(userText, i18n.language);
+      
+      if (!safetyCheck.isSafe) {
+        setIsTyping(false);
+        const warningResponse = safetyCheck.warningMessage || "Safety warning triggered.";
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          text: warningResponse,
+          sender: 'ai',
+          timestamp: new Date(),
+          riskLevel: 'high'
+        }]);
+        if (voiceCareMode) speak(warningResponse, i18n.language);
+        return;
+      }
+      
+      if (safetyCheck.isPainLog && activeProfile) {
+        // Simple pain log interception
+        // eslint-disable-next-line no-console
+        console.log("Logged pain level:", safetyCheck.painLevel);
+        // (In a full implementation, we'd update Firestore here)
+      }
+
       try {
         const result = await getAIResponse(userText, history, patientContext, i18n.language);
 
@@ -102,6 +133,11 @@ const Chat = () => {
           actions: result.actions,
           escalated: result.escalateToDoctor
         }]);
+        
+        // Auto-play if VoiceCare Mode is active
+        if (voiceCareMode) {
+          speak(result.response, i18n.language);
+        }
 
         // Handle escalation client-side (replaces server-side Firebase Admin actions)
         if (result.escalateToDoctor && linkedDoctorId) {
@@ -218,12 +254,25 @@ const Chat = () => {
             </div>
 
             {mode === 'ai' && (
-              <button 
-                onClick={switchToDoctor}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-              >
-                Contact Doctor <ArrowRight className="w-3 h-3" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setVoiceCareMode(!voiceCareMode)}
+                  className={cn(
+                    "text-xs font-medium px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5",
+                    voiceCareMode ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                  title="VoiceCare Accessibility Mode"
+                >
+                  {voiceCareMode ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">VoiceCare Mode</span>
+                </button>
+                <button 
+                  onClick={switchToDoctor}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
+                >
+                  Contact Doctor <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
             )}
           </div>
 
@@ -249,7 +298,21 @@ const Chat = () => {
                           )
                         : "bg-gray-100 text-gray-900 rounded-tl-sm"
                   )}>
-                    {msg.text}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                      {isAi && (
+                        <button 
+                          onClick={() => speak(msg.text, i18n.language)}
+                          className={cn(
+                            "p-1.5 rounded-md hover:bg-black/5 transition-colors shrink-0",
+                            isSpeaking ? "text-purple-600 animate-pulse" : "text-gray-400"
+                          )}
+                          title="Read aloud"
+                        >
+                          <Volume2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                     
                     {/* Render Structured AI Actions */}
                     {isAi && msg.actions && msg.actions.length > 0 && (
@@ -313,8 +376,26 @@ const Chat = () => {
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={mode === 'ai' ? "Describe your symptoms or ask a question..." : "Message your doctor..."}
                 className="flex-grow bg-gray-50 border border-gray-200 rounded-full px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-500 transition-all"
-                disabled={isTyping}
+                disabled={isTyping || isListening}
               />
+              {mode === 'ai' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isListening) return;
+                    startListening((text) => {
+                      setInputText(prev => prev + (prev ? ' ' : '') + text);
+                    });
+                  }}
+                  className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0 shadow-sm",
+                    isListening ? "bg-red-500 text-white animate-pulse" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                  title="Voice input"
+                >
+                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </button>
+              )}
               <button 
                 onClick={handleSend}
                 disabled={!inputText.trim() || isTyping}

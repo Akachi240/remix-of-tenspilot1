@@ -16,6 +16,7 @@ import { ModeSelector } from './ModeSelector';
 import { ElectrodePlacementGuide } from './ElectrodePlacementGuide';
 import { StepTransition } from '@/components/animations/Animations';
 import { useProfiles } from '@/context/ProfileContext';
+import { Mic } from 'lucide-react';
 
 // ─── Schema ───────────────────────────────────────────────
 // Updated to include modeId as required
@@ -27,6 +28,7 @@ const formSchema = z.object({
   previousTensExperience: z.enum(['first-time', 'occasional', 'experienced']).optional(),
   skinSensitivity: z.enum(['normal', 'sensitive', 'very-sensitive']).optional(),
   sessionDuration: z.string().min(1, 'Please select a session duration'),
+  voiceGuided: z.boolean().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -43,6 +45,7 @@ interface TensSettings {
   modeId: TensModeType;
   modeName: string;
   mechanism: string;
+  voiceGuided?: boolean;
 }
 
 const SAFETY_CHECKS = [
@@ -84,6 +87,7 @@ const SessionSetupForm = () => {
       previousTensExperience: undefined,
       skinSensitivity: undefined,
       sessionDuration: '20',
+      voiceGuided: false,
     },
   });
 
@@ -173,6 +177,7 @@ const SessionSetupForm = () => {
       modeId: data.modeId,
       modeName: modeConfig.name,
       mechanism: params.mechanism,
+      voiceGuided: data.voiceGuided,
     };
   };
 
@@ -427,9 +432,23 @@ const SessionSetupForm = () => {
                       Next Step →
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={confirmedCount < 5} className="w-full py-7 bg-blue-700 rounded-2xl text-base font-bold disabled:opacity-50">
-                      Generate & Start
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                      <Button type="submit" disabled={confirmedCount < 5} className="w-full py-7 bg-blue-700 rounded-2xl text-base font-bold disabled:opacity-50">
+                        Generate & Start
+                      </Button>
+                      <Button 
+                        type="button" 
+                        disabled={confirmedCount < 5} 
+                        onClick={() => {
+                          form.setValue('voiceGuided', true);
+                          form.handleSubmit(onSubmit, onInvalid)();
+                        }}
+                        className="w-full py-6 bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-200 rounded-2xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <Mic className="w-4 h-4" />
+                        Start Voice-Guided Session
+                      </Button>
+                    </div>
                   )}
                   {step > 1 && (
                     <Button variant="ghost" type="button" onClick={() => goToStep(step - 1)}>← Back</Button>
@@ -630,9 +649,22 @@ const SessionSetupForm = () => {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full bg-blue-600 py-8 text-xl font-bold rounded-2xl shadow-lg">
-                  Generate AI Settings & Start →
-                </Button>
+                <div className="flex flex-col gap-3">
+                  <Button type="submit" className="w-full bg-blue-600 py-8 text-xl font-bold rounded-2xl shadow-lg">
+                    Generate AI Settings & Start →
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={() => {
+                      form.setValue('voiceGuided', true);
+                      form.handleSubmit(onSubmit, onInvalid)();
+                    }}
+                    className="w-full bg-purple-100 text-purple-700 hover:bg-purple-200 py-6 text-lg font-bold rounded-2xl shadow-sm border border-purple-200 flex items-center justify-center gap-2"
+                  >
+                    <Mic className="w-5 h-5" />
+                    Start Voice-Guided Session (VoiceCare)
+                  </Button>
+                </div>
               </form>
             </Form>
           </CardContent>
