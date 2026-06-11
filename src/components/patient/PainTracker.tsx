@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +69,7 @@ export function PainTracker({ onSuccess }: PainTrackerProps) {
       }
 
       setTimeout(() => setSubmitted(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving pain log:', err);
       setError('Failed to record pain level. Please try again.');
     } finally {

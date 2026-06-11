@@ -22,7 +22,7 @@ const Report = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const getArrayFromLocalStorage = (key: string): any[] => {
+  const getArrayFromLocalStorage = (key: string): Record<string, unknown>[] => {
     try {
       const item = localStorage.getItem(key);
       if (!item) return [];

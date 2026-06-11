@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { generateUUID, syncSessionsWithGlobal, backfillSessionsToGlobal } from '@/lib/session-sync';
+import { generateUUID, syncSessionsWithGlobal, backfillSessionsToGlobal, GlobalSession } from '@/lib/session-sync';
 
 export interface SessionRecord {
   id?: string;
@@ -144,10 +144,10 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     runMigration();
 
     // Setup active listeners
-    let currentGlobalSessions: any[] = [];
+    let currentGlobalSessions: GlobalSession[] = [];
     let currentRawProfiles: Profile[] = [];
 
-    const handleSync = async (rawProfiles: Profile[], globalSessions: any[]) => {
+    const handleSync = async (rawProfiles: Profile[], globalSessions: GlobalSession[]) => {
       const updatedProfiles: Profile[] = [];
 
       for (const profile of rawProfiles) {
@@ -197,7 +197,7 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
 
     const qSessions = query(collection(db, 'sessions'), where('patientId', '==', userId));
     const unsubSessions = onSnapshot(qSessions, (snapshot) => {
-      const globalSessions: any[] = [];
+      const globalSessions: GlobalSession[] = [];
       snapshot.forEach((doc) => {
         globalSessions.push({ id: doc.id, ...doc.data() });
       });
@@ -254,10 +254,14 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
       );
       await setDoc(doc(db, 'users', user.uid, 'profiles', id), profileDataToSave);
       
-      // Sync basic patient info to root user document for Doctor Dashboard
+      // Sync full patient info to root user document for Doctor Dashboard
       await setDoc(doc(db, 'users', user.uid), {
         name: name,
         condition: condition,
+        medications: newProfile.medications,
+        age: age || null,
+        dateOfBirth: dob || null,
+        supervisingPhysician: physician || null,
         email: user.email || '',
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -309,10 +313,14 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
       );
       await setDoc(doc(db, 'users', user.uid, 'profiles', activeProfileId), profileDataToSave);
       
-      // Sync basic patient info to root user document for Doctor Dashboard
+      // Sync full patient info to root user document for Doctor Dashboard
       await setDoc(doc(db, 'users', user.uid), {
         name: updatedProfile.name,
         condition: updatedProfile.primaryCondition,
+        medications: updatedProfile.medications || [],
+        age: updatedProfile.age || null,
+        dateOfBirth: updatedProfile.dateOfBirth || null,
+        supervisingPhysician: updatedProfile.supervisingPhysician || null,
         email: user.email || '',
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -382,6 +390,10 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
           await setDoc(doc(db, 'users', userId), {
             name: profile.name,
             condition: profile.primaryCondition,
+            medications: profile.medications || [],
+            age: profile.age || null,
+            dateOfBirth: profile.dateOfBirth || null,
+            supervisingPhysician: profile.supervisingPhysician || null,
             email: user.email || '',
             updatedAt: new Date().toISOString()
           }, { merge: true });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import AppHeader from '@/components/layout/AppHeader';
 import { Send, Bot, Stethoscope, ArrowRight, AlertTriangle, Activity, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -6,7 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { getAIResponse } from '@/lib/ai-service';
+import { getAIResponse, PatientContext } from '@/lib/groq-service';
+import { useProfiles } from '@/context/ProfileContext';
 
 interface Message {
   id: string;
@@ -20,10 +21,33 @@ interface Message {
 
 const Chat = () => {
   const { user, linkedDoctorId } = useAuth();
+  const { activeProfile } = useProfiles();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'ai' | 'doctor'>('ai');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // Build RAG patient context from active profile
+  const patientContext = useMemo<PatientContext | undefined>(() => {
+    if (!activeProfile) return undefined;
+    const recentSessions = (activeProfile.sessionHistory || [])
+      .slice(-5)
+      .map(s => ({
+        date: s.date,
+        modeName: s.modeName || s.modeId || 'Unknown',
+        painBefore: s.painBefore,
+        painAfter: s.painAfter,
+        reliefPct: s.reductionPct,
+      }));
+    return {
+      name: activeProfile.name,
+      primaryCondition: activeProfile.primaryCondition,
+      medications: activeProfile.medications || [],
+      recentSessions,
+      supervisingPhysician: activeProfile.supervisingPhysician,
+      age: activeProfile.age,
+    };
+  }, [activeProfile]);
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -65,7 +89,7 @@ const Chat = () => {
         }));
 
       try {
-        const result = await getAIResponse(userText, history);
+        const result = await getAIResponse(userText, history, patientContext);
 
         setMessages(prev => [...prev, {
           id: Date.now().toString(),

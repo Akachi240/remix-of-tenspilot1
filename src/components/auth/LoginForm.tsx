@@ -1,4 +1,4 @@
-﻿﻿import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/button';
@@ -36,13 +36,14 @@ export const LoginForm = () => {
 
       // If successful, redirect to dashboard
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Show Firebase error to user
-      if (err.code === 'auth/user-not-found') {
+      const firebaseErr = err as { code?: string };
+      if (firebaseErr.code === 'auth/user-not-found') {
         setError('No account found with this email');
-      } else if (err.code === 'auth/wrong-password') {
+      } else if (firebaseErr.code === 'auth/wrong-password') {
         setError('Incorrect password');
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (firebaseErr.code === 'auth/invalid-email') {
         setError('Invalid email address');
       } else {
         setError('Login failed. Please try again.');

@@ -513,7 +513,7 @@ export const AdvancedSettings: React.FC = () => {
               {/* Waveform */}
               <div>
                 <Label className="font-bold mb-2 block">Waveform</Label>
-                <Select value={params.waveform} onValueChange={(v: any) => setParams({ ...params, waveform: v })}>
+                <Select value={params.waveform} onValueChange={(v: string) => setParams({ ...params, waveform: v as CustomPreset['waveform'] })}>
                   <SelectTrigger className="py-6">
                     <SelectValue />
                   </SelectTrigger>

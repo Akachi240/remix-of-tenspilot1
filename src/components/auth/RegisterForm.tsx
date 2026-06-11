@@ -1,4 +1,4 @@
-﻿﻿import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/button';
@@ -43,13 +43,14 @@ export const RegisterForm = () => {
 
       // If successful, redirect to dashboard
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Show Firebase error to user
-      if (err.code === 'auth/email-already-in-use') {
+      const firebaseErr = err as { code?: string };
+      if (firebaseErr.code === 'auth/email-already-in-use') {
         setError('This email is already registered');
-      } else if (err.code === 'auth/weak-password') {
+      } else if (firebaseErr.code === 'auth/weak-password') {
         setError('Password is too weak. Use at least 6 characters');
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (firebaseErr.code === 'auth/invalid-email') {
         setError('Invalid email address');
       } else {
         setError('Registration failed. Please try again.');

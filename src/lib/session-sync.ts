@@ -2,6 +2,23 @@ import { collection, writeBatch, doc, serverTimestamp } from 'firebase/firestore
 import { db } from './firebase';
 import { SessionRecord } from '../context/ProfileContext';
 
+/** Shape of a session document from the global `sessions` Firestore collection. */
+export interface GlobalSession {
+  id?: string;
+  date: string;
+  modeId?: string;
+  modeName?: string;
+  painType?: string;
+  placement?: string;
+  parameters?: { frequency: string; pulseDuration: string; intensity: number; duration: number };
+  painBefore?: number;
+  painAfter?: number;
+  reductionPct?: number;
+  notes?: string;
+  updatedAt?: { toDate?: () => Date } | string | Date;
+  [key: string]: unknown;
+}
+
 export interface SyncResult {
   mergedSessions: SessionRecord[];
   toUpload: SessionRecord[];
@@ -16,10 +33,10 @@ export function generateUUID(): string {
 
 export function hasSessionSyncConflict(
   nested: SessionRecord[],
-  global: any[]
+  global: GlobalSession[]
 ): boolean {
-  const globalById = new Map<string, any>();
-  const globalByDate = new Map<string, any>();
+  const globalById = new Map<string, GlobalSession>();
+  const globalByDate = new Map<string, GlobalSession>();
   
   global.forEach(s => {
     if (s.id) globalById.set(s.id, s);
@@ -43,7 +60,7 @@ export function hasSessionSyncConflict(
 
 export function resolveSessionConflict(
   nested: SessionRecord,
-  global: any
+  global: GlobalSession
 ): SessionRecord {
   const nestedTime = nested.updatedAt ? new Date(nested.updatedAt).getTime() : 0;
   // Handle Firestore Timestamp or string date
@@ -82,10 +99,10 @@ export function resolveSessionConflict(
 export async function syncSessionsWithGlobal(
   userId: string,
   nestedSessions: SessionRecord[],
-  globalSessions: any[]
+  globalSessions: GlobalSession[]
 ): Promise<SyncResult> {
-  const globalById = new Map<string, any>();
-  const globalByDate = new Map<string, any>();
+  const globalById = new Map<string, GlobalSession>();
+  const globalByDate = new Map<string, GlobalSession>();
   
   globalSessions.forEach(s => {
     if (s.id) globalById.set(s.id, s);
