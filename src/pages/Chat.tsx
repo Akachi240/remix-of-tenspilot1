@@ -57,6 +57,7 @@ const Chat = () => {
     if (mode === 'ai') {
       setIsTyping(true);
       const history = messages
+        .filter(m => m.id !== 'm1') // Exclude initial greeting to maintain strict user/model alternation
         .filter(m => m.sender === 'ai' || m.sender === 'patient')
         .map(m => ({
           role: m.sender === 'patient' ? 'user' as const : 'model' as const,

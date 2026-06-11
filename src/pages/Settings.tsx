@@ -2,16 +2,20 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/layout/AppHeader';
 import AdvancedSettings from '@/components/session/AdvancedSettings';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProfiles } from '@/context/ProfileContext';
 import { useAuth } from '@/hooks/useAuth';
-import { User, CheckCircle2, Trash2, X, LogOut, ArrowLeftRight } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { User, CheckCircle2, Trash2, X, LogOut, ArrowLeftRight, CloudLightning, RefreshCw, Loader2, Link2 } from 'lucide-react';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { toast } = useToast();
   const {
     profiles,
     activeProfileId,
@@ -21,6 +25,7 @@ const Settings = () => {
     setActiveProfileId,
     addMedication,
     removeMedication,
+    syncToFirebase,
   } = useProfiles();
 
   const [newName, setNewName] = useState('');
@@ -31,26 +36,124 @@ const Settings = () => {
   const [newMed, setNewMed] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleAddProfile = () => {
-    if (!newName.trim()) return;
-    addProfile(
-      newName.trim(),
-      newCondition.trim(),
-      newAge ? parseInt(newAge) : undefined,
-      newDOB || undefined,
-      newPhysician.trim() || undefined
-    );
-    setNewName('');
-    setNewCondition('');
-    setNewAge('');
-    setNewDOB('');
-    setNewPhysician('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
+
+  const handleLinkClinic = async () => {
+    if (!accessCode.trim() || !user) return;
+    setIsLinking(true);
+    try {
+      const q = query(
+        collection(db, 'doctorPatientLinks'),
+        where('accessCode', '==', accessCode.trim().toUpperCase()),
+        where('status', '==', 'active')
+      );
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        toast({ title: 'Invalid Code', description: 'This access code is invalid or expired.', variant: 'destructive' });
+        setIsLinking(false);
+        return;
+      }
+      
+      const linkDoc = snapshot.docs[0];
+      const linkData = linkDoc.data();
+      
+      // Update link doc
+      await updateDoc(doc(db, 'doctorPatientLinks', linkDoc.id), {
+        patientId: user.uid,
+        linkedAt: new Date()
+      });
+      
+      // Update patient profile root doc
+      await setDoc(doc(db, 'users', user.uid), {
+        linkedDoctorId: linkData.doctorId,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      toast({ title: 'Success', description: 'Your account is now linked to your doctor!' });
+      setAccessCode('');
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Error', description: 'Could not link to clinic.', variant: 'destructive' });
+    } finally {
+      setIsLinking(false);
+    }
   };
 
-  const handleAddMed = () => {
+  const handleAddProfile = async () => {
+    if (!newName.trim()) return;
+    setIsSaving(true);
+    try {
+      await addProfile(
+        newName.trim(),
+        newCondition.trim(),
+        newAge ? parseInt(newAge) : undefined,
+        newDOB || undefined,
+        newPhysician.trim() || undefined
+      );
+      setNewName('');
+      setNewCondition('');
+      setNewAge('');
+      setNewDOB('');
+      setNewPhysician('');
+      toast({ title: 'Profile Created', description: 'The patient profile has been successfully saved.' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Save Failed', description: 'Could not save profile to cloud.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddMed = async () => {
     if (!newMed.trim()) return;
-    addMedication(newMed.trim());
-    setNewMed('');
+    setIsSaving(true);
+    try {
+      await addMedication(newMed.trim());
+      setNewMed('');
+      toast({ title: 'Medication Added' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to add medication', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveMed = async (med: string) => {
+    try {
+      await removeMedication(med);
+      toast({ title: 'Medication Removed' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to remove medication', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteProfile = async (id: string) => {
+    try {
+      await deleteProfile(id);
+      toast({ title: 'Profile Deleted' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to delete profile', variant: 'destructive' });
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await syncToFirebase();
+      toast({ title: 'Sync Completed', description: 'All patient profiles and sessions are now backed up in the cloud.' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Sync Failed', description: 'Could not sync profiles to cloud. Check connection.', variant: 'destructive' });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -78,6 +181,77 @@ const Settings = () => {
             </TabsList>
 
             <TabsContent value="profile" className="max-w-lg mx-auto space-y-6">
+              
+              {/* Cloud Sync Status Card */}
+              {user && (
+                <Card className="border-blue-100 bg-blue-50/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-blue-900">
+                      <CloudLightning className="h-5 w-5 text-blue-600" />
+                      Cloud Synchronization
+                    </CardTitle>
+                    <CardDescription className="text-blue-800">
+                      Your profiles and TENS sessions are securely linked to your account ({user.email}).
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={handleManualSync}
+                      disabled={isSyncing}
+                      variant="outline" 
+                      className="w-full bg-white border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl flex items-center justify-center gap-2"
+                    >
+                      {isSyncing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Syncing with Cloud...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          Sync to Cloud Now
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Link to Clinic Card */}
+              {user && (
+                <Card className="border-indigo-100 bg-indigo-50/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-indigo-900">
+                      <Link2 className="h-5 w-5 text-indigo-600" />
+                      Link to Doctor
+                    </CardTitle>
+                    <CardDescription className="text-indigo-800">
+                      Enter the 6-digit access code provided by your clinic to enable live therapy monitoring and video consultations.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        placeholder="Enter 6-digit code..."
+                        value={accessCode}
+                        onChange={e => setAccessCode(e.target.value.toUpperCase())}
+                        maxLength={6}
+                        onKeyDown={e => e.key === 'Enter' && handleLinkClinic()}
+                        className="flex-1 border rounded-lg px-3 py-2 text-sm font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                        disabled={isLinking}
+                      />
+                      <Button
+                        onClick={handleLinkClinic}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm w-24"
+                        disabled={isLinking || accessCode.length < 6}
+                      >
+                        {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Link'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Add Patient Profile</CardTitle>
@@ -88,12 +262,14 @@ const Settings = () => {
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={isSaving}
                   />
                   <input
                     placeholder="Primary condition (e.g. Lower Back Pain)"
                     value={newCondition}
                     onChange={e => setNewCondition(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={isSaving}
                   />
                   <input
                     placeholder="Age"
@@ -101,6 +277,7 @@ const Settings = () => {
                     value={newAge}
                     onChange={e => setNewAge(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={isSaving}
                   />
                   <input
                     placeholder="Date of Birth"
@@ -108,19 +285,29 @@ const Settings = () => {
                     value={newDOB}
                     onChange={e => setNewDOB(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={isSaving}
+                    style={{ colorScheme: 'light' }}
                   />
                   <input
                     placeholder="Supervising Physician"
                     value={newPhysician}
                     onChange={e => setNewPhysician(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={isSaving}
                   />
                   <Button
                     onClick={handleAddProfile}
-                    disabled={!newName.trim()}
+                    disabled={!newName.trim() || isSaving}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
                   >
-                    Add Profile
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving Profile...
+                      </>
+                    ) : (
+                      'Add Profile'
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -159,7 +346,7 @@ const Settings = () => {
                             event.stopPropagation();
                             setConfirmDeleteId(profile.id);
                           }}
-                          className="text-red-400 hover:text-red-600"
+                          className="text-red-400 hover:text-red-600 font-medium"
                           aria-label={`Delete ${profile.name}`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -175,7 +362,7 @@ const Settings = () => {
                             <Button
                               size="sm"
                               onClick={() => {
-                                deleteProfile(profile.id);
+                                handleDeleteProfile(profile.id);
                                 setConfirmDeleteId(null);
                               }}
                               className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs"
@@ -217,7 +404,7 @@ const Settings = () => {
                         >
                           {med}
                           <button
-                            onClick={() => removeMedication(med)}
+                            onClick={() => handleRemoveMed(med)}
                             className="text-blue-400 hover:text-red-500"
                             aria-label={`Remove ${med}`}
                           >
@@ -233,10 +420,12 @@ const Settings = () => {
                         onChange={e => setNewMed(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAddMed()}
                         className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        disabled={isSaving}
                       />
                       <Button
                         onClick={handleAddMed}
                         className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm"
+                        disabled={isSaving}
                       >
                         Add
                       </Button>

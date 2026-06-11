@@ -7,6 +7,7 @@ import { useProfiles } from '@/context/ProfileContext';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { saveSessionToFirestore } from '@/lib/services/sessionService';
 
 const ActiveSessionPanel = () => {
   const { user } = useAuth();
@@ -184,53 +185,42 @@ const ActiveSessionPanel = () => {
     sessionHistory.push(historyRecord);
     localStorage.setItem('tens-session-history', JSON.stringify(sessionHistory));
 
-    addSession({
-      date: timestamp,
-      modeId,
-      modeName,
-      painType: modeId === 'neuropathy' || modeId === 'period' ? 'Chronic' : 'Acute',
-      placement: historyRecord.placement,
-      parameters: {
-        frequency: historyRecord.frequency,
-        pulseDuration: historyRecord.pulseDuration,
-        intensity: historyRecord.intensity,
-        duration: historyRecord.duration,
-      },
-      painBefore: prePainLevel,
-      painAfter,
-      reductionPct: roundedReductionPct ?? 0,
-      notes: sessionNotes,
-    });
-
     if (user?.uid) {
       try {
-        await addDoc(collection(db, 'sessions'), {
-          patientId: user.uid,
-          date: timestamp,
+        const savedSessionId = await saveSessionToFirestore(user.uid, {
           modeId,
           modeName,
-          painType: modeId === 'neuropathy' || modeId === 'period' ? 'Chronic' : 'Acute',
-          placement: historyRecord.placement,
-          parameters: {
-            frequency: historyRecord.frequency,
-            pulseDuration: historyRecord.pulseDuration,
-            intensity: historyRecord.intensity,
-            duration: historyRecord.duration,
-          },
           painBefore: prePainLevel,
           painAfter,
-          reductionPct: roundedReductionPct ?? 0,
+          location: config?.data?.painLocation || 'unknown',
+          duration: durationMinutes,
+          intensity: Number(config?.data?.settings?.intensitySetting) || 0,
+          frequency: config?.data?.settings?.frequencySetting || '',
+          pulseDuration: config?.data?.settings?.pulseDuration || '',
+          painType: modeId === 'neuropathy' || modeId === 'period' ? 'Chronic' : 'Acute',
           notes: sessionNotes,
-          completed: status === 'completed',
-          createdAt: serverTimestamp(),
+        });
+
+        console.log(`✅ Session ${savedSessionId} uploaded successfully`);
+
+        toast({
+          title: 'Session Saved!',
+          description: 'Your session has been recorded and synced.',
         });
       } catch (err) {
-        console.error("Failed to upload session to Firestore:", err);
-        // Continue anyway since we saved locally
-      }
-    }
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`❌ Failed to save session: ${errorMsg}`, err);
 
-    toast({ title: 'Session Saved!', description: 'Your TENS session has been recorded.' });
+        toast({
+          title: 'Save Error',
+          description: 'Session saved locally but failed to sync. Will retry when online.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      toast({ title: 'Session Saved!', description: 'Your session has been recorded locally.' });
+    }
+    
     navigate('/dashboard');
   };
 

@@ -241,7 +241,7 @@ const GateControlContent = () => (
     </p>
     <div className="rounded-xl p-4 space-y-4" style={{ background: 'rgba(74,143,196,0.06)', border: '1px solid rgba(74,143,196,0.2)' }}>
       <h4 className="font-medium text-sm" style={{ color: 'var(--ink)' }}>The Pain Gate Mechanism</h4>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { icon: '⚡', title: 'TENS Stimulates',  desc: 'Activates large Aβ nerve fibres at the skin surface'        },
           { icon: '🚪', title: 'Gate Closes',       desc: 'Spinal interneurons inhibit pain signal transmission'        },
@@ -250,7 +250,7 @@ const GateControlContent = () => (
           <div key={item.title} className="text-center p-3 bg-white rounded-lg border">
             <div className="text-xl mb-1">{item.icon}</div>
             <h5 className="font-medium text-xs">{item.title}</h5>
-            <p className="text-xs text-muted-foreground mt-1 hidden sm:block">{item.desc}</p>
+            <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
           </div>
         ))}
       </div>
@@ -731,7 +731,7 @@ const EducationGuide = () => {
   ];
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto overflow-hidden break-words">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BookOpen className="h-5 w-5" style={{ color: 'var(--accent-hex)' }} />

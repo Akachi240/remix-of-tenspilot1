@@ -199,10 +199,18 @@ const SessionSetupForm = () => {
     toast({ title: '⚠️ Missing fields', description: missing.join(' · '), variant: 'destructive' });
   };
 
-  const handleAddProfile = () => {
+  const handleAddProfile = async () => {
     if (!newName.trim()) return;
-    addPatientProfile(newName.trim(), newCondition.trim());
-    setNewName(''); setNewCondition(''); setShowAddProfile(false);
+    try {
+      await addPatientProfile(newName.trim(), newCondition.trim());
+      toast({ title: 'Profile Created', description: 'Patient profile has been registered.' });
+      setNewName(''); 
+      setNewCondition(''); 
+      setShowAddProfile(false);
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to create profile', variant: 'destructive' });
+    }
   };
 
   // ─── Optional field label helper ──────────────────────

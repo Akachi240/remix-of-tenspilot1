@@ -21,7 +21,6 @@ export async function getAIResponse(
 
   const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-  // Build the conversation contents for the Gemini API
   const contents = [
     { role: 'user' as const, parts: [{ text: SYSTEM_PROMPT }] },
     { role: 'model' as const, parts: [{ text: 'Understood. I will act as the TensPilot+ AI Clinical Agent and output only structured JSON.' }] },
@@ -31,6 +30,13 @@ export async function getAIResponse(
     })),
     { role: 'user' as const, parts: [{ text: message }] },
   ];
+
+  console.log('📤 Sending to Gemini API:', {
+    modelUsed: 'gemini-2.0-flash',
+    historyLength: history.length,
+    historyRoles: history.map(h => h.role),
+    newMessage: message.substring(0, 50) + (message.length > 50 ? '...' : '')
+  });
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',

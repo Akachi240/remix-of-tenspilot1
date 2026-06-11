@@ -1,9 +1,10 @@
-﻿import { db } from './firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from './firebase';
+import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { FirebasePainLog, createPainLogDocument } from './schemas/painlog.schema';
 
 export interface PainLog {
   id: string;
-  userId: string;
+  userId: string; // Keep as userId for frontend compatibility, maps to patientId in Firestore
   painLevel: number;
   location: string;
   notes: string;
@@ -18,13 +19,17 @@ export const savePainLog = async (
   notes: string
 ) => {
   try {
-    const docRef = await addDoc(collection(db, 'pain_logs'), {
-      userId,
+    const painLogData = createPainLogDocument({
+      patientId: userId,
       painLevel,
       location,
       notes,
-      timestamp: Timestamp.now(),
+      source: 'manual',
+      timestamp: serverTimestamp() as unknown as Timestamp,
+      createdAt: serverTimestamp() as unknown as Timestamp,
     });
+
+    const docRef = await addDoc(collection(db, 'pain_logs'), painLogData);
     return docRef.id;
   } catch (error) {
     console.error('Error saving pain log:', error);
@@ -37,16 +42,20 @@ export const getPainLogs = async (userId: string): Promise<PainLog[]> => {
   try {
     const q = query(
       collection(db, 'pain_logs'),
-      where('userId', '==', userId),
+      where('patientId', '==', userId),
       orderBy('timestamp', 'desc')
     );
     const querySnapshot = await getDocs(q);
     const logs: PainLog[] = [];
     querySnapshot.forEach((doc) => {
+      const data = doc.data() as FirebasePainLog;
       logs.push({
         id: doc.id,
-        ...(doc.data() as Omit<PainLog, 'id'>),
-        timestamp: doc.data().timestamp.toDate(),
+        userId: data.patientId, // Map back to userId for frontend
+        painLevel: data.painLevel,
+        location: data.location,
+        notes: data.notes || '',
+        timestamp: (data.timestamp as Timestamp).toDate ? (data.timestamp as Timestamp).toDate() : new Date(),
       });
     });
     return logs;
