@@ -3,7 +3,7 @@ import AppHeader from '@/components/layout/AppHeader';
 import { Send, Bot, Stethoscope, ArrowRight, AlertTriangle, Activity, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { getAIResponse, PatientContext } from '@/lib/groq-service';
@@ -97,6 +97,51 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Real-time listener for doctor messages
+  useEffect(() => {
+    if (!user?.uid || !linkedDoctorId) return;
+
+    const q = query(
+      collection(db, `doctorPatientLinks/${linkedDoctorId}_${user.uid}/messages`),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setMessages(prev => {
+        const newMessages = [...prev];
+        let changed = false;
+
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          // Prevent duplicates (local optimistic vs remote)
+          const isLocal = prev.some(m => 
+            m.id === docSnap.id || 
+            (m.text === data.text && Math.abs(m.timestamp.getTime() - (data.timestamp?.toMillis() || Date.now())) < 5000)
+          );
+
+          if (!isLocal) {
+            newMessages.push({
+              id: docSnap.id,
+              text: data.text,
+              sender: data.senderRole === 'patient' ? 'patient' : 'doctor',
+              timestamp: data.timestamp?.toDate() || new Date(),
+            });
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          // Sort by time to ensure proper order
+          newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+          return newMessages;
+        }
+        return prev;
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, linkedDoctorId]);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;

@@ -21,6 +21,7 @@ const Settings = () => {
     activeProfileId,
     activeProfile,
     addProfile,
+    updateProfile,
     deleteProfile,
     setActiveProfileId,
     addMedication,
@@ -38,6 +39,12 @@ const Settings = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCondition, setEditCondition] = useState('');
+  const [editAge, setEditAge] = useState('');
+  const [editPhysician, setEditPhysician] = useState('');
+  const [isEditSaving, setIsEditSaving] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [isLinking, setIsLinking] = useState(false);
   const [linkedDoctor, setLinkedDoctor] = useState<{ id: string; name: string; email?: string; specialty?: string } | null>(null);
@@ -179,6 +186,34 @@ const Settings = () => {
       toast({ title: 'Error', description, variant: 'destructive' });
     } finally {
       setIsLinking(false);
+    }
+  };
+
+  const handleEditProfile = (profile: typeof profiles[0]) => {
+    setEditingProfileId(profile.id);
+    setEditName(profile.name);
+    setEditCondition(profile.primaryCondition || '');
+    setEditAge(profile.age ? String(profile.age) : '');
+    setEditPhysician(profile.supervisingPhysician || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProfileId || !editName.trim()) return;
+    setIsEditSaving(true);
+    try {
+      await updateProfile(editingProfileId, {
+        name: editName.trim(),
+        primaryCondition: editCondition.trim(),
+        age: editAge ? parseInt(editAge) : undefined,
+        supervisingPhysician: editPhysician.trim() || undefined,
+      });
+      setEditingProfileId(null);
+      toast({ title: 'Profile Updated', description: 'Your profile has been saved and synced to cloud.' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Save Failed', description: 'Could not save changes.', variant: 'destructive' });
+    } finally {
+      setIsEditSaving(false);
     }
   };
 
@@ -482,6 +517,17 @@ const Settings = () => {
                         <button
                           onClick={event => {
                             event.stopPropagation();
+                            handleEditProfile(profile);
+                          }}
+                          className="text-blue-400 hover:text-blue-600 mr-1 p-1"
+                          aria-label={`Edit ${profile.name}`}
+                          title="Edit profile"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={event => {
+                            event.stopPropagation();
                             setConfirmDeleteId(profile.id);
                           }}
                           className="text-red-400 hover:text-red-600 font-medium"
@@ -490,6 +536,53 @@ const Settings = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
+
+                      {editingProfileId === profile.id && (
+                        <div className="ml-2 mt-2 p-4 border border-blue-200 rounded-xl bg-blue-50 space-y-2">
+                          <p className="text-sm font-semibold text-blue-800">Edit Profile</p>
+                          <input
+                            placeholder="Name *"
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                          />
+                          <input
+                            placeholder="Primary condition"
+                            value={editCondition}
+                            onChange={e => setEditCondition(e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                          />
+                          <input
+                            placeholder="Age"
+                            type="number"
+                            value={editAge}
+                            onChange={e => setEditAge(e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                          />
+                          <input
+                            placeholder="Supervising Physician"
+                            value={editPhysician}
+                            onChange={e => setEditPhysician(e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={handleSaveEdit}
+                              disabled={!editName.trim() || isEditSaving}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm"
+                            >
+                              {isEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                            </Button>
+                            <Button
+                              onClick={() => setEditingProfileId(null)}
+                              variant="outline"
+                              className="flex-1 rounded-xl text-sm"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
                       {confirmDeleteId === profile.id && (
                         <div className="ml-8 mt-2 p-3 border border-red-200 rounded-xl bg-red-50 text-sm space-y-2">

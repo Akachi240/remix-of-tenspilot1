@@ -57,6 +57,7 @@ interface ProfileContextType {
   addMedication: (_med: string) => Promise<void>;
   removeMedication: (_med: string) => Promise<void>;
   addSession: (_session: SessionRecord) => Promise<void>;
+  updateProfile: (_id: string, _updates: Partial<Profile>) => Promise<void>;
   syncToFirebase: () => Promise<void>;
 }
 
@@ -333,6 +334,28 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
     await updateActive(p => ({ ...p, medications: p.medications.filter(m => m !== med) }));
   };
 
+  const updateProfile = async (id: string, updates: Partial<Profile>) => {
+    const updatedProfiles = profiles.map(p =>
+      p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
+    );
+    setProfiles(updatedProfiles);
+    localStorage.setItem('tens-companion-profiles', JSON.stringify(updatedProfiles));
+    if (user) {
+      const profileRef = doc(db, 'users', user.uid, 'profiles', id);
+      await setDoc(profileRef, { ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+      const updated = updatedProfiles.find(p => p.id === id);
+      if (updated) {
+        await setDoc(doc(db, 'users', user.uid), {
+          name: updated.name,
+          age: updated.age ?? null,
+          condition: updated.primaryCondition ?? null,
+          dob: updated.dateOfBirth ?? null,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
+    }
+  };
+
   const addSession = async (session: SessionRecord) => {
     const sessionWithId = {
       id: session.id || generateUUID(),
@@ -394,7 +417,8 @@ export const ProfileProvider = ({ children }: { children: React.ReactNode }) => 
       addMedication,
       removeMedication,
       addSession,
-      syncToFirebase
+      syncToFirebase,
+      updateProfile
     }}>
       {children}
     </ProfileContext.Provider>

@@ -29,14 +29,14 @@ const VideoConsult = () => {
   useEffect(() => {
     // Load Jitsi External API script
     const script = document.createElement('script');
-    script.src = 'https://8x8.vc/vpaas-magic-cookie-30location.state/external_api.js';
+    script.src = 'https://meet.jit.si/external_api.js';
     script.async = true;
 
     script.onload = () => {
       if (!jitsiContainerRef.current) return;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const api = new (window as any).JitsiMeetExternalAPI('8x8.vc', {
+        const api = new (window as any).JitsiMeetExternalAPI('meet.jit.si', {
           roomName: roomName,
           parentNode: jitsiContainerRef.current,
           width: '100%',
