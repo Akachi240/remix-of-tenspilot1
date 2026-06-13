@@ -45,39 +45,64 @@ const Settings = () => {
     if (!accessCode.trim() || !user) return;
     setIsLinking(true);
     try {
+      console.error('🔐 Attempting to link with code:', accessCode.trim());
+
+      // Search for the access code - codes are numeric, no toUpperCase needed
       const q = query(
         collection(db, 'doctorPatientLinks'),
-        where('accessCode', '==', accessCode.trim().toUpperCase()),
+        where('accessCode', '==', accessCode.trim()),
         where('status', '==', 'active')
       );
-      const snapshot = await getDocs(q);
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out')), 10000)
+      );
+
+      const snapshot = await Promise.race([getDocs(q), timeoutPromise]);
       
       if (snapshot.empty) {
-        toast({ title: 'Invalid Code', description: 'This access code is invalid or expired.', variant: 'destructive' });
+        console.error('❌ No matching code found for:', accessCode.trim());
+        toast({ title: 'Invalid Code', description: 'This access code is invalid or expired. Ask your doctor to generate a new one.', variant: 'destructive' });
         setIsLinking(false);
         return;
       }
       
       const linkDoc = snapshot.docs[0];
       const linkData = linkDoc.data();
+      console.error('✅ Code found! Doctor ID:', linkData.doctorId);
       
-      // Update link doc
+      // Update link doc with patient info
       await updateDoc(doc(db, 'doctorPatientLinks', linkDoc.id), {
         patientId: user.uid,
         linkedAt: new Date()
       });
+      console.error('✅ Link document updated');
       
       // Update patient profile root doc
       await setDoc(doc(db, 'users', user.uid), {
         linkedDoctorId: linkData.doctorId,
+        userType: 'patient',
         updatedAt: new Date().toISOString()
       }, { merge: true });
+      console.error('✅ Patient profile updated with linkedDoctorId');
       
-      toast({ title: 'Success', description: 'Your account is now linked to your doctor!' });
+      toast({ title: 'Success! 🎉', description: 'Your account is now linked to your doctor! They can see your therapy data.' });
       setAccessCode('');
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Error', description: 'Could not link to clinic.', variant: 'destructive' });
+      console.error('❌ Link error:', err);
+      
+      let description = 'Could not link to clinic. Please try again.';
+      if (err instanceof Error) {
+        if (err.message.includes('permission') || err.message.includes('PERMISSION_DENIED')) {
+          description = 'Permission denied. The security rules may need updating.';
+        } else if (err.message.includes('timed out')) {
+          description = 'Request timed out. Check your internet connection.';
+        } else if (err.message.includes('offline')) {
+          description = 'You appear to be offline. Check your connection.';
+        }
+      }
+      
+      toast({ title: 'Error', description, variant: 'destructive' });
     } finally {
       setIsLinking(false);
     }
