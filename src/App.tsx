@@ -135,7 +135,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/consult",
+    path: "/video-consult",
     element: (
       <ProtectedRoute>
         <Suspense fallback={<LazyFallback />}>

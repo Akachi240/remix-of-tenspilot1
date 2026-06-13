@@ -3,7 +3,7 @@ import AppHeader from '@/components/layout/AppHeader';
 import { Send, Bot, Stethoscope, ArrowRight, AlertTriangle, Activity, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { getAIResponse, PatientContext } from '@/lib/groq-service';
@@ -31,6 +31,31 @@ const Chat = () => {
   const [mode, setMode] = useState<'ai' | 'doctor'>('ai');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [doctorName, setDoctorName] = useState('Your Doctor');
+
+  useEffect(() => {
+    if (!linkedDoctorId) return;
+    const fetchDoctorName = async () => {
+      try {
+        const doctorDoc = await getDoc(doc(db, 'users', linkedDoctorId));
+        const data = doctorDoc.data();
+        if (data) {
+          setDoctorName(data.name || data.displayName || 'Your Doctor');
+        }
+        // Also try the doctors collection
+        if (!data?.name && !data?.displayName) {
+          const doctorDoc2 = await getDoc(doc(db, 'doctors', linkedDoctorId));
+          const data2 = doctorDoc2.data();
+          if (data2) {
+            setDoctorName(data2.name || 'Your Doctor');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching doctor name:', err);
+      }
+    };
+    fetchDoctorName();
+  }, [linkedDoctorId]);
   
   // VoiceCare Features
   const { isListening, isSpeaking, startListening, speak } = useSpeech();
@@ -247,7 +272,7 @@ const Chat = () => {
               </div>
               <div>
                 <h2 className="font-semibold text-gray-900">
-                  {mode === 'ai' ? 'Clinical AI Agent' : 'Dr. Smith (Clinic)'}
+                  {mode === 'ai' ? 'Clinical AI Agent' : doctorName}
                 </h2>
                 <p className="text-xs text-green-600 font-medium">Online</p>
               </div>

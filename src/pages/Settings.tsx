@@ -158,6 +158,9 @@ const Settings = () => {
       });
       
       toast({ title: 'Success! 🎉', description: 'Your account is now linked to your doctor! They can see your therapy data.' });
+      // Auto-sync patient data to cloud so doctor can see it immediately
+      await syncToFirebase();
+      console.error('✅ Patient data synced to cloud');
       setAccessCode('');
     } catch (err) {
       console.error('❌ Link error:', err);
