@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/layout/AppHeader';
 import AdvancedSettings from '@/components/session/AdvancedSettings';
@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProfiles } from '@/context/ProfileContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { User, CheckCircle2, Trash2, X, LogOut, ArrowLeftRight, CloudLightning, RefreshCw, Loader2, Link2 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { User, CheckCircle2, Trash2, X, LogOut, ArrowLeftRight, CloudLightning, RefreshCw, Loader2, Link2, Unlink } from 'lucide-react';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const Settings = () => {
@@ -40,6 +40,67 @@ const Settings = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [isLinking, setIsLinking] = useState(false);
+  const [linkedDoctor, setLinkedDoctor] = useState<{ id: string; name: string; email?: string; specialty?: string } | null>(null);
+  const [checkingLink, setCheckingLink] = useState(false);
+
+  // Check if patient is already linked to a doctor
+  useEffect(() => {
+    const checkExistingLink = async () => {
+      if (!user) return;
+      setCheckingLink(true);
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userData = userDoc.data();
+        if (userData?.linkedDoctorId) {
+          // Fetch doctor info
+          const doctorDoc = await getDoc(doc(db, 'users', userData.linkedDoctorId));
+          const doctorData = doctorDoc.data();
+          setLinkedDoctor({
+            id: userData.linkedDoctorId,
+            name: doctorData?.name || doctorData?.displayName || 'Your Doctor',
+            email: doctorData?.email,
+            specialty: doctorData?.specialty,
+          });
+        }
+      } catch (err) {
+        console.error('Error checking doctor link:', err);
+      } finally {
+        setCheckingLink(false);
+      }
+    };
+    checkExistingLink();
+  }, [user]);
+
+  const handleUnlinkDoctor = async () => {
+    if (!user || !linkedDoctor) return;
+    try {
+      // Remove linkedDoctorId from patient's user doc
+      await setDoc(doc(db, 'users', user.uid), {
+        linkedDoctorId: null,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      // Find and update the link document
+      const q = query(
+        collection(db, 'doctorPatientLinks'),
+        where('patientId', '==', user.uid),
+        where('doctorId', '==', linkedDoctor.id),
+        where('status', '==', 'active')
+      );
+      const snapshot = await getDocs(q);
+      for (const linkDoc of snapshot.docs) {
+        await updateDoc(doc(db, 'doctorPatientLinks', linkDoc.id), {
+          status: 'revoked'
+        });
+      }
+
+      setLinkedDoctor(null);
+      toast({ title: 'Unlinked', description: 'You have been unlinked from your doctor.' });
+    } catch (err) {
+      console.error('Error unlinking:', err);
+      toast({ title: 'Error', description: 'Could not unlink. Please try again.', variant: 'destructive' });
+    }
+  };
 
   const handleLinkClinic = async () => {
     if (!accessCode.trim() || !user) return;
@@ -85,6 +146,16 @@ const Settings = () => {
         updatedAt: new Date().toISOString()
       }, { merge: true });
       console.error('✅ Patient profile updated with linkedDoctorId');
+      
+      // Fetch doctor info and update UI immediately
+      const doctorDoc = await getDoc(doc(db, 'users', linkData.doctorId));
+      const doctorData = doctorDoc.data();
+      setLinkedDoctor({
+        id: linkData.doctorId,
+        name: doctorData?.name || doctorData?.displayName || 'Your Doctor',
+        email: doctorData?.email,
+        specialty: doctorData?.specialty,
+      });
       
       toast({ title: 'Success! 🎉', description: 'Your account is now linked to your doctor! They can see your therapy data.' });
       setAccessCode('');
@@ -244,37 +315,76 @@ const Settings = () => {
 
               {/* Link to Clinic Card */}
               {user && (
-                <Card className="border-indigo-100 bg-indigo-50/50">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2 text-indigo-900">
-                      <Link2 className="h-5 w-5 text-indigo-600" />
-                      Link to Doctor
-                    </CardTitle>
-                    <CardDescription className="text-indigo-800">
-                      Enter the 6-digit access code provided by your clinic to enable live therapy monitoring and video consultations.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                      <input
-                        placeholder="Enter 6-digit code..."
-                        value={accessCode}
-                        onChange={e => setAccessCode(e.target.value.toUpperCase())}
-                        maxLength={6}
-                        onKeyDown={e => e.key === 'Enter' && handleLinkClinic()}
-                        className="flex-1 border rounded-lg px-3 py-2 text-sm font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                        disabled={isLinking}
-                      />
+                checkingLink ? (
+                  <Card className="border-slate-100">
+                    <CardContent className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                    </CardContent>
+                  </Card>
+                ) : linkedDoctor ? (
+                  <Card className="border-emerald-200 bg-emerald-50/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2 text-emerald-900">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        Connected to Doctor
+                      </CardTitle>
+                      <CardDescription className="text-emerald-800">
+                        Your therapy data is being shared with your doctor.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="bg-white rounded-xl p-3 border border-emerald-200">
+                        <p className="font-semibold text-slate-800">{linkedDoctor.name}</p>
+                        {linkedDoctor.specialty && (
+                          <p className="text-sm text-slate-500">{linkedDoctor.specialty}</p>
+                        )}
+                        {linkedDoctor.email && (
+                          <p className="text-sm text-slate-400 mt-1">{linkedDoctor.email}</p>
+                        )}
+                      </div>
                       <Button
-                        onClick={handleLinkClinic}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm w-24"
-                        disabled={isLinking || accessCode.length < 6}
+                        onClick={handleUnlinkDoctor}
+                        variant="outline"
+                        className="w-full border-red-200 text-red-600 hover:bg-red-50 rounded-xl flex items-center justify-center gap-2"
                       >
-                        {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Link'}
+                        <Unlink className="h-4 w-4" />
+                        Unlink from Doctor
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="border-indigo-100 bg-indigo-50/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2 text-indigo-900">
+                        <Link2 className="h-5 w-5 text-indigo-600" />
+                        Link to Doctor
+                      </CardTitle>
+                      <CardDescription className="text-indigo-800">
+                        Enter the 6-digit access code provided by your clinic to enable live therapy monitoring and video consultations.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          placeholder="Enter 6-digit code..."
+                          value={accessCode}
+                          onChange={e => setAccessCode(e.target.value)}
+                          maxLength={6}
+                          onKeyDown={e => e.key === 'Enter' && handleLinkClinic()}
+                          className="flex-1 border rounded-lg px-3 py-2 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                          disabled={isLinking}
+                        />
+                        <Button
+                          onClick={handleLinkClinic}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm w-24"
+                          disabled={isLinking || accessCode.length < 6}
+                        >
+                          {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Link'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
               )}
 
               <Card>
