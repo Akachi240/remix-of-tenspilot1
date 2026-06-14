@@ -61,7 +61,13 @@ const Settings = () => {
         if (userData?.linkedDoctorId) {
           // Fetch doctor info
           const doctorDoc = await getDoc(doc(db, 'users', userData.linkedDoctorId));
-          const doctorData = doctorDoc.data();
+          let doctorData = doctorDoc.data();
+          
+          if (!doctorData?.name && !doctorData?.displayName) {
+            const doctorDoc2 = await getDoc(doc(db, 'doctors', userData.linkedDoctorId));
+            doctorData = doctorDoc2.data();
+          }
+
           setLinkedDoctor({
             id: userData.linkedDoctorId,
             name: doctorData?.name || doctorData?.displayName || 'Your Doctor',
@@ -156,7 +162,13 @@ const Settings = () => {
       
       // Fetch doctor info and update UI immediately
       const doctorDoc = await getDoc(doc(db, 'users', linkData.doctorId));
-      const doctorData = doctorDoc.data();
+      let doctorData = doctorDoc.data();
+      
+      if (!doctorData?.name && !doctorData?.displayName) {
+        const doctorDoc2 = await getDoc(doc(db, 'doctors', linkData.doctorId));
+        doctorData = doctorDoc2.data();
+      }
+
       setLinkedDoctor({
         id: linkData.doctorId,
         name: doctorData?.name || doctorData?.displayName || 'Your Doctor',

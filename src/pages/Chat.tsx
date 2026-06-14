@@ -11,6 +11,7 @@ import { useProfiles } from '@/context/ProfileContext';
 import { useTranslation } from 'react-i18next';
 import { useSpeech } from '@/hooks/useSpeech';
 import { analyzePatientInput } from '@/lib/safety-filter';
+import { savePainLog } from '@/lib/pain';
 import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
 interface Message {
@@ -184,11 +185,15 @@ const Chat = () => {
         return;
       }
       
-      if (safetyCheck.isPainLog && activeProfile) {
+      if (safetyCheck.isPainLog && activeProfile && user?.uid) {
         // Simple pain log interception
-        // eslint-disable-next-line no-console
         console.log("Logged pain level:", safetyCheck.painLevel);
-        // (In a full implementation, we'd update Firestore here)
+        savePainLog({
+          patientId: user.uid,
+          painLevel: safetyCheck.painLevel || 0,
+          notes: userText,
+          location: activeProfile.primaryCondition || 'General'
+        }).catch(err => console.error('Failed to save pain log:', err));
       }
 
       try {
@@ -403,9 +408,33 @@ const Chat = () => {
                           </button>
                         )}
                         {msg.actions.includes("suggest_adjustment") && (
-                          <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100/50 px-2 py-1 rounded">
-                            <Activity className="w-3.5 h-3.5" />
-                            Therapy Adjustment Suggested
+                          <div className="flex flex-col gap-2 mt-2 border-t border-purple-200/50 pt-2">
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100/50 px-2 py-1 rounded w-fit">
+                              <Activity className="w-3.5 h-3.5" />
+                              Therapy Adjustment Suggested
+                            </div>
+                            <button
+                              onClick={() => {
+                                const confirmText = "I have manually adjusted my device to the suggested settings.";
+                                setMessages(prev => [...prev, {
+                                  id: Date.now().toString(),
+                                  text: confirmText,
+                                  sender: 'patient',
+                                  timestamp: new Date()
+                                }]);
+                                if (linkedDoctorId && user?.uid) {
+                                  addDoc(collection(db, `doctorPatientLinks/${linkedDoctorId}_${user.uid}/messages`), {
+                                    text: confirmText,
+                                    senderId: user.uid,
+                                    senderRole: 'patient',
+                                    timestamp: serverTimestamp()
+                                  }).catch(err => console.error("Failed to send adjustment confirmation", err));
+                                }
+                              }}
+                              className="self-start px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md shadow-sm transition-colors"
+                            >
+                              I have adjusted my device
+                            </button>
                           </div>
                         )}
                       </div>

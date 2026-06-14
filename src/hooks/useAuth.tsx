@@ -43,6 +43,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLinkedDoctorId(null);
           }
           setLoading(false);
+        }, (err) => {
+          console.error("Auth user doc snapshot error:", err);
+          setLoading(false);
         });
       } else {
         setLinkedDoctorId(null);
