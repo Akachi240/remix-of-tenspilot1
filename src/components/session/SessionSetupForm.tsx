@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -56,7 +56,7 @@ const SAFETY_CHECKS = [
   'The device power bank is connected and emergency switch is accessible',
 ];
 
-const DURATION_PRESETS = ['5', '10', '15', '20', '25', '30'];
+const ALL_DURATION_PRESETS = ['5', '10', '15', '20', '25', '30', '45', '60'];
 
 const skinOptions = [
   { value: 'normal', emoji: '🙂', label: 'Normal' },
@@ -98,6 +98,14 @@ const SessionSetupForm = () => {
   const [newName, setNewName] = useState('');
   const [newCondition, setNewCondition] = useState('');
   const [safetyChecks, setSafetyChecks] = useState<boolean[]>([false, false, false, false, false]);
+
+  const availableDurations = useMemo(() => {
+    if (!selectedMode) return ALL_DURATION_PRESETS;
+    const config = getModeConfig(selectedMode);
+    const min = config.parameters.sessionDuration.min;
+    const max = config.parameters.sessionDuration.max;
+    return ALL_DURATION_PRESETS.filter(d => parseInt(d) >= min && parseInt(d) <= max);
+  }, [selectedMode]);
   const [painValue, setPainValue] = useState(5);
   const [safetyPassed, setSafetyPassed] = useState(false);
 
@@ -385,7 +393,7 @@ const SessionSetupForm = () => {
                       <FormItem>
                         <FormLabel className="font-bold">⏱️ Time (min)</FormLabel>
                         <div className="grid grid-cols-3 gap-2">
-                          {DURATION_PRESETS.map(d => (
+                          {availableDurations.map((d: string) => (
                             <div
                               key={d}
                               onClick={() => form.setValue('sessionDuration', d, { shouldValidate: true })}
@@ -539,7 +547,7 @@ const SessionSetupForm = () => {
                     {/* Intensity — always shown */}
                     <FormField control={form.control} name="painIntensity" render={() => (
                       <FormItem>
-                        <FormLabel className="font-bold">Intensity Scale: {painValue}/10</FormLabel>
+                        <FormLabel className="font-bold">Pre-Session Pain Level: {painValue}/10</FormLabel>
                         <FormControl>
                           <Slider
                             min={1} max={10} step={1}
@@ -618,7 +626,7 @@ const SessionSetupForm = () => {
                       <FormItem>
                         <FormLabel className="font-bold">⏱️ Duration (min)</FormLabel>
                         <div className="grid grid-cols-3 gap-2">
-                          {DURATION_PRESETS.map(d => (
+                          {availableDurations.map((d: string) => (
                             <div
                               key={d}
                               onClick={() => form.setValue('sessionDuration', d, { shouldValidate: true })}

@@ -188,12 +188,12 @@ const Chat = () => {
       if (safetyCheck.isPainLog && activeProfile && user?.uid) {
         // Simple pain log interception
         console.log("Logged pain level:", safetyCheck.painLevel);
-        savePainLog({
-          patientId: user.uid,
-          painLevel: safetyCheck.painLevel || 0,
-          notes: userText,
-          location: activeProfile.primaryCondition || 'General'
-        }).catch(err => console.error('Failed to save pain log:', err));
+        savePainLog(
+          user.uid,
+          safetyCheck.painLevel || 0,
+          activeProfile.primaryCondition || 'General',
+          userText
+        ).catch(err => console.error('Failed to save pain log:', err));
       }
 
       try {

@@ -98,7 +98,6 @@ export const GENERAL_PAIN_MODE: TensModeConfig = {
     'Post-exercise soreness',
     'Tension headaches',
     'General joint aches',
-    'Minor cuts / wounds',
   ],
   parameters: {
     frequency: {
@@ -108,7 +107,7 @@ export const GENERAL_PAIN_MODE: TensModeConfig = {
       rationale: 'Gate Control Theory: High-frequency activates large Aβ fibers, inhibiting pain transmission.',
     },
     pulseWidth: {
-      min: 60,
+      min: 50,
       max: 150,
       recommended: 100,
       unit: 'μs',
@@ -221,9 +220,9 @@ export const NEUROPATHY_MODE: TensModeConfig = {
         'Low frequency activates Aδ and C-fibers; promotes endorphin/enkephalin release over 15-20 minutes.',
     },
     pulseWidth: {
-      min: 150,
-      max: 250,
-      recommended: 200,
+      min: 200,
+      max: 300,
+      recommended: 250,
       unit: 'μs',
     },
     waveform: 'biphasic-symmetric',
@@ -316,15 +315,15 @@ export const MUSCULOSKELETAL_MODE: TensModeConfig = {
   ],
   parameters: {
     frequency: {
-      min: 50,
-      max: 100,
-      recommended: 80,
+      min: 35,
+      max: 80,
+      recommended: 60,
       rationale: 'Moderate-high frequency for gate control + muscle relaxation.',
     },
     pulseWidth: {
-      min: 100,
-      max: 200,
-      recommended: 150,
+      min: 250,
+      max: 400,
+      recommended: 300,
       unit: 'μs',
     },
     waveform: 'biphasic-symmetric',
@@ -419,10 +418,10 @@ export const PERIOD_MODE: TensModeConfig = {
   ],
   parameters: {
     frequency: {
-      min: 10,
-      max: 20,
-      recommended: 15,
-      rationale: 'Slower rhythm mimics natural pelvic rhythms; promotes relaxation + endorphin release.',
+      min: 90,
+      max: 120,
+      recommended: 100,
+      rationale: 'High frequency gate control adapted for deep pelvic and lower abdominal discomfort.',
     },
     pulseWidth: {
       min: 150,
