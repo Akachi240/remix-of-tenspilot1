@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🏥 Tenspilot Patient Application
+# 📱 TensPilot+ Patient App
 
-**AI-powered patient engagement platform for the Tenspilot M10s health monitoring device**
+**Companion patient application for the TensPilot+ ecosystem — connecting TENS therapy patients with their healthcare providers**
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -11,7 +11,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-[🌐 Live Demo](https://tenspilot.vercel.app) · [📋 Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard) · [🐛 Report Bug](https://github.com/Akachi240/remix-of-tenspilot1/issues) · [✨ Request Feature](https://github.com/Akachi240/remix-of-tenspilot1/issues)
+[🌐 Live Demo](https://tenspilot.vercel.app) · [🩺 Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard) · [🐛 Report Bug](https://github.com/Akachi240/remix-of-tenspilot1/issues)
 
 </div>
 
@@ -19,25 +19,29 @@
 
 ## 📖 About the Project
 
-The **Tenspilot M10s** is a next-generation health monitoring device designed to bridge the gap between patients and healthcare providers. This patient-facing web application serves as the digital companion — empowering users to track their health in real time, connect with their doctors over live video, and receive AI-driven health guidance 24/7.
+**TensPilot+** is a healthcare software ecosystem built to support patients using a TENS (Transcutaneous Electrical Nerve Stimulation) device for pain management.
 
-> Built for patients. Designed for impact. Powered by modern web technology.
+The ecosystem has two components:
+- 🔧 **The TENS Device** — a standalone hardware unit (Arduino Uno based, 4 therapy modes) that delivers electrical stimulation therapy
+- 💻 **TensPilot+ Software** — this companion web application (and the provider dashboard) that helps patients log their sessions, track pain levels, and stay connected with their doctor
+
+> The apps and hardware operate independently — TensPilot+ is a **companion app**, not a direct device interface. Patients use it alongside their TENS therapy to keep records and communicate with their provider.
 
 ---
 
 ## ✨ Features
 
-### 🩺 Core Healthcare
+### 🩺 Patient Tools
 | Feature | Description |
 |---|---|
-| 📊 **Pain Tracker** | Intelligent pain logging with trend analysis and visual patterns |
-| 🎬 **Video Consultations** | Real-time, peer-to-peer doctor consultations via Jitsi SDK |
-| 💬 **AI Health Chat** | 24/7 AI-powered health assistant powered by Groq LLM |
-| 📈 **Live Dashboard** | Real-time health metrics from the M10s device |
-| 📋 **Smart Reports** | Auto-generated clinical reports exportable as PDF |
-| 🎮 **Gamification** | Competitive health challenges to keep patients motivated |
-| 🎓 **Health Education** | Curated medical content and treatment guidance |
-| 🔔 **Session Management** | Full TENS device session setup, monitoring & logging |
+| 📊 **Pain Tracker** | Log pain levels before and after sessions, visualise trends over time |
+| 📈 **Health Dashboard** | Overview of session history, pain relief stats and progress |
+| 📋 **Session Reports** | Auto-generated PDF health reports to share with your doctor |
+| 💬 **AI Health Chat** | 24/7 AI-powered health assistant (powered by Groq LLM) |
+| 🎓 **Health Education** | Curated medical content and therapy guidance |
+| 🎮 **Gamification** | Motivational challenges to keep patients engaged with their therapy |
+| ⚙️ **Session Logging** | Manual session entry: mode used, intensity, duration, pain scores |
+| 🔔 **Account Settings** | Profile management, language preferences and notifications |
 
 ### ⚙️ Technical Highlights
 | Capability | Detail |
@@ -47,7 +51,7 @@ The **Tenspilot M10s** is a next-generation health monitoring device designed to
 | 🌐 **i18n Ready** | Multi-language support via i18next |
 | 🔒 **Secure Auth** | Firebase Authentication with JWT token management |
 | ♿ **Accessible** | WCAG-compliant UI built on shadcn/ui + Radix primitives |
-| 🎨 **Design System** | Custom Tenspilot theme with Framer Motion animations |
+| 🎨 **Design System** | Custom TensPilot+ theme with Framer Motion animations |
 
 ---
 
@@ -64,9 +68,7 @@ The **Tenspilot M10s** is a next-generation health monitoring device designed to
 | **Forms** | React Hook Form + Zod | 7.x / 3.x |
 | **Backend** | Firebase Auth + Firestore | 12.x |
 | **AI / LLM** | Groq SDK | 1.x |
-| **Video Calls** | Jitsi React SDK | 1.x |
 | **PDF Export** | jsPDF | 4.x |
-| **QR Codes** | qrcode | 1.x |
 | **Charts** | Recharts | 2.x |
 | **Routing** | React Router v6 | 6.x |
 | **Testing** | Vitest + React Testing Library | 4.x |
@@ -129,17 +131,15 @@ remix-of-tenspilot1/
 │   │   ├── chat/           # AI chat interface
 │   │   ├── dashboard/      # Dashboard widgets & cards
 │   │   ├── pain-tracker/   # Pain logging components
-│   │   ├── reports/        # Report generation
-│   │   └── video/          # Video consultation UI
+│   │   └── reports/        # Report generation
 │   ├── context/            # React Context providers
 │   ├── hooks/              # Custom React hooks
-│   ├── lib/                # Utilities, Firebase config, helpers
+│   ├── lib/                # Firebase config, utilities, helpers
 │   ├── pages/              # Route-level page components
 │   └── test/               # Unit & integration tests
 ├── docs/                    # Additional documentation
 ├── .env.example             # Environment variable template
-├── vite.config.ts           # Vite configuration
-└── tailwind.config.ts       # Tailwind design system
+└── vite.config.ts           # Vite configuration
 ```
 
 ---
@@ -151,15 +151,14 @@ remix-of-tenspilot1/
 | `/` | Splash | Animated entry screen |
 | `/login` | Login | Firebase authentication |
 | `/dashboard` | Dashboard | Main health overview |
-| `/session-setup` | Session Setup | M10s device configuration |
-| `/active-session` | Active Session | Live session monitoring |
-| `/pain-tracker` | Pain Tracker | Log and visualize pain data |
-| `/video-consult` | Video Consult | Real-time doctor video call |
+| `/session-setup` | Session Setup | Log a new therapy session |
+| `/active-session` | Active Session | Active session tracking |
+| `/pain-tracker` | Pain Tracker | Log and visualise pain data |
 | `/chat` | AI Chat | Groq-powered health assistant |
 | `/report` | Report | PDF health report generation |
 | `/education` | Education | Health articles & content |
-| `/competition` | Competition | Gamified health challenges |
-| `/settings` | Settings | Account & device settings |
+| `/competition` | Competition | Gamified therapy challenges |
+| `/settings` | Settings | Account & preferences |
 
 ---
 
@@ -167,68 +166,56 @@ remix-of-tenspilot1/
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                Patient Browser App               │
+│          TensPilot+ Patient App                  │
 │  React 19 + TypeScript + Vite + Tailwind CSS    │
-│  ─────────────────────────────────────────────  │
-│  Zustand (global state)                         │
-│  TanStack Query (server state + caching)        │
-│  React Router v6 (client-side routing)          │
-└──────────┬──────────────────────────────────────┘
-           │
-    ┌──────┴───────────────────────┐
-    │                              │
-    ▼                              ▼
-┌────────────────┐      ┌─────────────────────┐
-│   Firebase     │      │   External Services  │
-│  ─────────── │      │  ──────────────────  │
-│  Auth (JWT)   │      │  Groq SDK (AI Chat)  │
-│  Firestore DB │      │  Jitsi (Video Calls) │
-│  Storage      │      │  Vercel (Hosting)    │
-└────────────────┘      └─────────────────────┘
+└──────────────────────┬──────────────────────────┘
+                       │
+              ┌────────┴────────┐
+              │                 │
+              ▼                 ▼
+   ┌─────────────────┐  ┌───────────────────┐
+   │    Firebase      │  │  External APIs    │
+   │  Auth + Firestore│  │  Groq (AI chat)   │
+   │  (shared with    │  │  Vercel (hosting) │
+   │  Provider App)   │  └───────────────────┘
+   └────────┬─────────┘
+            │ Real-time sync
+            ▼
+   ┌──────────────────────────────┐
+   │   TensPilot+ Provider App   │
+   │  (tenspilot-doctors-dashboard)│
+   └──────────────────────────────┘
 ```
 
-### Authentication Flow
-1. User signs in via Firebase Auth (email/password or OAuth)
-2. JWT token stored and refreshed automatically
-3. `ProtectedRoute` wrapper guards all authenticated pages
-4. Firestore user document synced on session start
+Both apps share the same Firebase backend — patient data entered in the patient app is immediately visible to the doctor in the provider dashboard.
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-# Run all tests (single pass)
-npm run test
-
-# Watch mode (TDD)
-npm run test:watch
-
-# Generate coverage report
-npm run test:coverage
+npm run test          # Run all tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
 ```
-
-Tests live in `src/test/` and use **Vitest** + **React Testing Library** + **jsdom**.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are what make the open-source community amazing. Any contributions you make are **greatly appreciated**!
-
-1. **Fork** the repository
+1. Fork the repository
 2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'feat: add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
+3. Commit: `git commit -m 'feat: add amazing feature'`
+4. Push: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for our code standards and contribution guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 ---
 
 ## 📄 License
 
-Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for more information.
+MIT License — see [LICENSE](./LICENSE) for details.
 
 ---
 
@@ -242,7 +229,7 @@ Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for more infor
 
 ## 🔗 Related
 
-- 🏥 **[Tenspilot Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard)** — Doctor-facing clinical management interface
+- 🩺 **[TensPilot+ Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard)** — Doctor-facing companion app (shared Firebase backend)
 
 ---
 
