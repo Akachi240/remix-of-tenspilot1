@@ -1,8 +1,27 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "tenspilot-patient-app",
+  "description": "Patient-facing application for Tenspilot M10s - AI-powered health monitoring & engagement platform",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "homepage": "https://github.com/Akachi240/remix-of-tenspilot1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Akachi240/remix-of-tenspilot1.git"
+  },
+  "author": "Akachi240",
+  "license": "MIT",
+  "keywords": [
+    "healthcare",
+    "telemedicine",
+    "react",
+    "typescript",
+    "firebase",
+    "ai-powered",
+    "pain-management",
+    "device-integration",
+    "pwa"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
