@@ -124,31 +124,9 @@ Both apps share the same Firebase backend — patient data entered in the patien
 
 ---
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit: `git commit -m 'feat: add amazing feature'`
-4. Push: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
-
----
-
 ## 📄 License
 
-© Akachi240. All Rights Reserved. This project is not open source. No part of this codebase may be copied, modified, or distributed without explicit permission from the author.
-
----
-
-## 👨‍💻 Author
-
-**Akachi** — Healthcare Software Engineer
-
-[![GitHub](https://img.shields.io/badge/GitHub-@Akachi240-181717?logo=github)](https://github.com/Akachi240)
-
----
+© Akachi240. All Rights Reserved. This project is not open source. No part of this codebase may be copied, modified, or distributed without explicit permission from the author.---
 
 ## 🔗 Related
 
