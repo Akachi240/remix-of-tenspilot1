@@ -11,7 +11,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)]()
 
-[🌐 Live Demo](https://tenspilot.vercel.app) · [🩺 Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard) · [🐛 Report Bug](https://github.com/Akachi240/remix-of-tenspilot1/issues)
+[🌐 Live Demo](https://remix-of-tenspilot1.vercel.app) · [🩺 Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard) · [🐛 Report Bug](https://github.com/Akachi240/remix-of-tenspilot1/issues)
 
 </div>
 
