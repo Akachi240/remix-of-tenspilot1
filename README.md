@@ -9,7 +9,7 @@
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![License: All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)]()
 
 [🌐 Live Demo](https://tenspilot.vercel.app) · [🩺 Provider Dashboard](https://github.com/Akachi240/tenspilot-doctors-dashboard) · [🐛 Report Bug](https://github.com/Akachi240/remix-of-tenspilot1/issues)
 
@@ -77,73 +77,6 @@ The ecosystem has two components:
 
 ---
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js `>= 18.x`
-- npm or bun
-
-### Installation
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Akachi240/remix-of-tenspilot1.git
-cd remix-of-tenspilot1
-
-# 2. Install dependencies
-npm install
-
-# 3. Set up environment variables
-cp .env.example .env.local
-# Fill in your Firebase & Groq API credentials
-
-# 4. Start the development server
-npm run dev
-```
-
-The app will be available at `http://localhost:5173`.
-
-### Environment Variables
-
-Copy `.env.example` to `.env.local` and populate:
-
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_GROQ_API_KEY=your_groq_api_key
-```
-
----
-
-## 📂 Project Structure
-
-```
-remix-of-tenspilot1/
-├── public/                  # Static assets (icons, PWA manifest)
-├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── ui/             # shadcn/ui primitives
-│   │   ├── auth/           # Login, registration flows
-│   │   ├── chat/           # AI chat interface
-│   │   ├── dashboard/      # Dashboard widgets & cards
-│   │   ├── pain-tracker/   # Pain logging components
-│   │   └── reports/        # Report generation
-│   ├── context/            # React Context providers
-│   ├── hooks/              # Custom React hooks
-│   ├── lib/                # Firebase config, utilities, helpers
-│   ├── pages/              # Route-level page components
-│   └── test/               # Unit & integration tests
-├── docs/                    # Additional documentation
-├── .env.example             # Environment variable template
-└── vite.config.ts           # Vite configuration
-```
-
----
-
 ## 🗺️ Key Routes
 
 | Route | Page | Description |
@@ -191,16 +124,6 @@ Both apps share the same Firebase backend — patient data entered in the patien
 
 ---
 
-## 🧪 Testing
-
-```bash
-npm run test          # Run all tests
-npm run test:watch    # Watch mode
-npm run test:coverage # Coverage report
-```
-
----
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -215,7 +138,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 ## 📄 License
 
-MIT License — see [LICENSE](./LICENSE) for details.
+© Akachi240. All Rights Reserved. This project is not open source. No part of this codebase may be copied, modified, or distributed without explicit permission from the author.
 
 ---
 
